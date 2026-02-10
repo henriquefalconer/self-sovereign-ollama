@@ -3,11 +3,23 @@
  SPDX-License-Identifier: Proprietary
 -->
 
-## Implementation Status (v0.0.3) ✅ COMPLETE
+## Implementation Status (v0.0.4-dev) ⚠️ CRITICAL BUG FIX IN PROGRESS
 
-**🎉 v0.0.3 is feature-complete and ready for production use (2026-02-10)**
+**⚠️ Critical bug discovered in v0.0.3 during real-world Aider usage (2026-02-10)**
+
+**Bug**: `OLLAMA_API_BASE` incorrectly set to `http://ai-server:11434/v1` in API contract specification. This causes Aider/LiteLLM to construct invalid URLs like `http://ai-server:11434/v1/api/show` (combining OpenAI prefix `/v1` with Ollama native endpoint `/api/show`), resulting in 404 errors.
+
+**Root Cause**: Spec files defined `OLLAMA_API_BASE` with `/v1` suffix, but Ollama-aware tools need to access native endpoints at `/api/*` (without `/v1` prefix) for model metadata operations.
+
+**Fix Status**: Spec files updated (2026-02-10). Implementation files (env.template, install scripts, test scripts) require updates to match corrected spec.
+
+---
+
+### v0.0.3 Status Summary (2026-02-10)
 
 Re-audited 2026-02-10 (fourth pass) with exhaustive line-by-line spec-vs-implementation comparison using parallel Opus/Sonnet subagents. All 35 previously identified gaps re-confirmed. **16 additional gaps** found across all scripts. Total: **51 spec compliance gaps**. **ALL 51 spec compliance gaps FIXED** as of 2026-02-10.
+
+**However**: Critical environment variable bug not caught by automated tests (tests validated API endpoints work but did not run Aider end-to-end).
 
 - ✅ 8 of 8 spec-required scripts exist: env.template, server install.sh, server uninstall.sh, server test.sh, client install.sh, client uninstall.sh, client test.sh, warm-models.sh
 - ✅ Spec documentation complete: 7 server + 6 client = 13 spec files, all internally consistent
@@ -31,19 +43,112 @@ Prioritized task list for achieving full spec implementation of both server and 
 
 ## Current Status
 
-- **Specifications**: COMPLETE (7 server + 6 client = 13 spec files, all internally consistent)
-- **Documentation**: COMPLETE (README.md + SETUP.md for both server and client, plus root README, includes service management)
-- **Server implementation**: install.sh ✅ COMPLETE, uninstall.sh ✅ COMPLETE, warm-models.sh ✅ COMPLETE (all 3 gaps fixed), test.sh ✅ COMPLETE (all 9 gaps fixed)
-- **Client implementation**: env.template COMPLETE, install.sh ✅ COMPLETE (all 11 gaps fixed), uninstall.sh ✅ COMPLETE (all 6 gaps fixed), test.sh ✅ COMPLETE (all 15 gaps fixed)
-- **UX consistency**: ✅ COMPLETE (all 4 cross-cutting issues fixed: F7.1-F7.4)
-- **Server hardware testing**: ✅ COMPLETE (all 20 tests passed on vm@remote-ollama, 2026-02-10)
-- **Client hardware testing**: ✅ COMPLETE (all 27 tests passed on vm@macos, 2026-02-10)
+- **Specifications**: ✅ UPDATED (2026-02-10) - Fixed `OLLAMA_API_BASE` bug in 3 spec files
+  - ✅ `client/specs/API_CONTRACT.md` - Corrected `OLLAMA_API_BASE` to `http://ai-server:11434` (no `/v1` suffix)
+  - ✅ `client/specs/SCRIPTS.md` - Updated test validation to check for correct URL format
+  - ✅ `server/specs/INTERFACES.md` - Added note about Ollama native endpoints
+- **Implementation files**: ⚠️ REQUIRES UPDATES to match corrected specs
+  - ❌ `client/config/env.template` - Still has incorrect `OLLAMA_API_BASE` with `/v1`
+  - ⚠️ `client/scripts/install.sh` - Uses env.template (will inherit bug)
+  - ⚠️ `client/scripts/test.sh` - Validates old incorrect format
+  - ⚠️ All deployed installations - Require manual fix or re-install
+- **Documentation**: ⚠️ REQUIRES UPDATES to reflect corrected environment variables
+- **Server implementation**: ✅ No changes needed (server serves both `/v1/*` and `/api/*` endpoints)
+- **Testing**: ⚠️ REQUIRES NEW TEST - Add end-to-end Aider test to catch this class of bugs
 
 ## Remaining Work (Priority Order)
 
-✅ **ALL PRIORITIES COMPLETE** - v0.0.3 is ready for release
+⚠️ **CRITICAL BUG FIX REQUIRED** - v0.0.4 in progress
 
-All implementation priorities (A-F) and documentation polish (Priority E) are complete. All 51 spec compliance gaps fixed. Server and client hardware testing passed (47 of 47 automated tests). The project is feature-complete and ready for production use.
+v0.0.3 contained a critical environment variable bug discovered during real-world Aider usage. Automated tests passed but did not catch this issue because they validated API endpoints without running Aider end-to-end.
+
+### Priority G: Critical Bug Fix - OLLAMA_API_BASE (URGENT)
+
+**Discovered**: 2026-02-10 during first real Aider usage attempt
+**Severity**: CRITICAL - Aider completely non-functional with current configuration
+**Impact**: All v0.0.3 installations broken for Aider usage
+
+**Tasks**:
+- [ ] Update `client/config/env.template` line 4: Change `OLLAMA_API_BASE=http://__HOSTNAME__:11434/v1` to `OLLAMA_API_BASE=http://__HOSTNAME__:11434`
+- [ ] Update `client/scripts/test.sh` environment validation to check for correct URL format (no `/v1` on OLLAMA_API_BASE)
+- [ ] Add end-to-end Aider test to `client/scripts/test.sh` to catch runtime integration issues
+- [ ] Update all user-facing documentation (README.md, SETUP.md) to reflect corrected environment variables
+- [ ] Add troubleshooting section for users with v0.0.3 installations
+- [ ] Re-run client hardware testing with corrected configuration
+- [ ] Document lessons learned: automated tests must include end-to-end validation, not just API endpoint checks
+
+**Specs already fixed** (2026-02-10):
+- ✅ `client/specs/API_CONTRACT.md` - Corrected and added rationale
+- ✅ `client/specs/SCRIPTS.md` - Updated validation requirements
+- ✅ `server/specs/INTERFACES.md` - Added clarifying note
+
+---
+
+## Post-Release Critical Finding (v0.0.3)
+
+### Bug Discovery Timeline
+
+1. **2026-02-10 morning**: All 47 automated tests passed (20 server + 27 client)
+2. **2026-02-10 afternoon**: v0.0.3 declared production-ready
+3. **2026-02-10 evening**: First real Aider usage attempt fails with 404 errors
+4. **Root cause identified**: `OLLAMA_API_BASE` set to `http://remote-ollama:11434/v1` causes Aider/LiteLLM to construct invalid URL `http://remote-ollama:11434/v1/api/show`
+
+### Why Automated Tests Didn't Catch This
+
+**What the tests validated:**
+- ✅ OpenAI-compatible endpoints work: `/v1/models`, `/v1/chat/completions`
+- ✅ Aider binary is installed and in PATH
+- ✅ Environment variables are set and exported
+- ✅ All documented API endpoints respond correctly
+
+**What the tests MISSED:**
+- ❌ Aider's actual runtime behavior when fetching model metadata
+- ❌ Ollama native endpoint access at `/api/show` (not part of documented API contract)
+- ❌ End-to-end tool usage with real prompts
+
+**Test Design Flaw**: Tests validated individual components (API works, Aider installed, env vars set) but not the **integration** of all components during actual tool usage.
+
+### Technical Analysis
+
+**The Problem:**
+Ollama serves two distinct API surfaces:
+1. **OpenAI-compatible**: `/v1/chat/completions`, `/v1/models` (documented in our API contract)
+2. **Ollama native**: `/api/show`, `/api/tags`, `/api/chat` (undocumented, but used by Ollama-aware tools)
+
+Aider/LiteLLM uses:
+- `OPENAI_API_BASE` for chat requests → needs `/v1` suffix ✅
+- `OLLAMA_API_BASE` for metadata requests → needs NO suffix ❌
+
+**The Fix:**
+```bash
+# Before (broken):
+OLLAMA_API_BASE=http://ai-server:11434/v1
+OPENAI_API_BASE=http://ai-server:11434/v1
+
+# After (correct):
+OLLAMA_API_BASE=http://ai-server:11434      # No /v1 - for native endpoints
+OPENAI_API_BASE=http://ai-server:11434/v1   # With /v1 - for OpenAI endpoints
+```
+
+### Lessons Learned
+
+1. **End-to-end testing is mandatory** - Component tests are insufficient for integration validation
+2. **Test the primary use case** - Aider is the only supported v1 interface; it must be tested end-to-end
+3. **Tool behavior != API behavior** - Tools may use APIs in unexpected ways; must test with actual tools, not just curl
+4. **Undocumented features matter** - Even though `/api/show` isn't in our API contract, tools depend on it
+5. **Real-world usage is the ultimate test** - Automated tests gave false confidence
+
+### Required Test Enhancement
+
+Add to `client/scripts/test.sh`:
+```bash
+# End-to-end Aider test (non-interactive)
+echo "test prompt" | aider --yes --message "respond with 'ok'" --model ollama/qwen2.5:0.5b
+```
+
+This would have immediately exposed the `/v1/api/show` 404 error during testing.
+
+---
 
 ### Priority A: server/scripts/uninstall.sh -- ✅ COMPLETE
 - **File**: `server/scripts/uninstall.sh`

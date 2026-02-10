@@ -37,11 +37,17 @@ All others return 404.
 ## Environment Variables the client must set
 
 ```bash
-OLLAMA_API_BASE=http://ai-server:11434/v1
-OPENAI_API_BASE=http://ai-server:11434/v1     # for tools that read this
-OPENAI_API_KEY=ollama                                 # ignored by server
-AIDER_MODEL=ollama/<model-name>                       # optional default
+OLLAMA_API_BASE=http://ai-server:11434
+OPENAI_API_BASE=http://ai-server:11434/v1
+OPENAI_API_KEY=ollama
+AIDER_MODEL=ollama/<model-name>                       # optional
 ```
+
+**Rationale**:
+- `OLLAMA_API_BASE` (no `/v1` suffix): Used by Ollama-aware tools (like Aider/LiteLLM) for model metadata via Ollama's native `/api/show` endpoint. This endpoint exists on the server but is not part of the guaranteed API contract.
+- `OPENAI_API_BASE` (with `/v1` suffix): Used by OpenAI-compatible tools for chat completions. This is the primary supported interface.
+- `OPENAI_API_KEY`: Required by most SDKs/tools but ignored by server (Tailscale ACLs provide security).
+- `AIDER_MODEL`: Optional default model selection for Aider.
 
 ## Error Behavior (client must handle)
 

@@ -6,6 +6,8 @@
 - Fully OpenAI-compatible schema (chat completions endpoint)
 - No custom routes or extensions in v1
 
+**Note**: Ollama also serves native endpoints at `/api/*` (e.g., `/api/show`, `/api/tags`) which are not part of the documented API contract but may be used by Ollama-aware clients for metadata operations. The guaranteed contract for clients is the OpenAI-compatible `/v1/*` endpoints only (see `../client/specs/API_CONTRACT.md`).
+
 ## Configuration Interface
 
 - Environment variables (primarily OLLAMA_HOST)

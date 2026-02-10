@@ -65,8 +65,8 @@ Comprehensive test script that validates all client functionality. Designed to r
 ### Environment Configuration Tests
 - Verify `~/.ai-client/env` file exists
 - Verify all required environment variables are set:
-  - `OLLAMA_API_BASE` (should be `http://<hostname>:11434/v1`)
-  - `OPENAI_API_BASE` (should be `http://<hostname>:11434/v1`)
+  - `OLLAMA_API_BASE` (should be `http://<hostname>:11434` — no `/v1` suffix)
+  - `OPENAI_API_BASE` (should be `http://<hostname>:11434/v1` — with `/v1` suffix)
   - `OPENAI_API_KEY` (should be `ollama`)
   - `AIDER_MODEL` (optional, check if set)
 - Verify shell profile sources the env file (check `~/.zshrc` or `~/.bashrc` for marker comments)
