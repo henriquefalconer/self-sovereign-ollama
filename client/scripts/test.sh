@@ -830,8 +830,10 @@ fi
 if [[ "$QUICK_MODE" == "true" ]]; then
     skip "Install script idempotency check - quick mode" "Remove --quick flag when running test.sh"
 elif [[ -f "$SHELL_PROFILE" ]]; then
-    START_COUNT=$(grep -c ">>> ai-client >>>" "$SHELL_PROFILE" 2>/dev/null || echo "0")
-    END_COUNT=$(grep -c "<<< ai-client <<<" "$SHELL_PROFILE" 2>/dev/null || echo "0")
+    START_COUNT=$(grep -c ">>> ai-client >>>" "$SHELL_PROFILE" 2>/dev/null || true)
+    [[ -z "$START_COUNT" ]] && START_COUNT=0
+    END_COUNT=$(grep -c "<<< ai-client <<<" "$SHELL_PROFILE" 2>/dev/null || true)
+    [[ -z "$END_COUNT" ]] && END_COUNT=0
 
     if [[ "$START_COUNT" -eq 1 ]] && [[ "$END_COUNT" -eq 1 ]]; then
         pass "Install script marker comments found exactly once (idempotency verified)"

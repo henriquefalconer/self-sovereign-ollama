@@ -57,9 +57,15 @@ get_stats() {
 
     for iter_log in "$run_dir"/iteration-*.json; do
         if [ -f "$iter_log" ]; then
-            local subagents=$(grep -c '"name":"Task"' "$iter_log" 2>/dev/null || echo "0")
-            local reads=$(grep -c '"name":"Read"' "$iter_log" 2>/dev/null || echo "0")
-            local edits=$(($(grep -c '"name":"Edit"' "$iter_log" 2>/dev/null || echo "0") + $(grep -c '"name":"Write"' "$iter_log" 2>/dev/null || echo "0")))
+            local subagents=$(grep -c '"name":"Task"' "$iter_log" 2>/dev/null | head -n 1 | tr -cd '0-9' || echo "0")
+            subagents=${subagents:-0}
+            local reads=$(grep -c '"name":"Read"' "$iter_log" 2>/dev/null | head -n 1 | tr -cd '0-9' || echo "0")
+            reads=${reads:-0}
+            local edit_count=$(grep -c '"name":"Edit"' "$iter_log" 2>/dev/null | head -n 1 | tr -cd '0-9' || echo "0")
+            edit_count=${edit_count:-0}
+            local write_count=$(grep -c '"name":"Write"' "$iter_log" 2>/dev/null | head -n 1 | tr -cd '0-9' || echo "0")
+            write_count=${write_count:-0}
+            local edits=$((edit_count + write_count))
             local cache_cr=$(grep -o '"cache_creation_input_tokens":[0-9]*' "$iter_log" | awk -F: '{sum+=$2} END {print sum+0}')
             local cache_rd=$(grep -o '"cache_read_input_tokens":[0-9]*' "$iter_log" | awk -F: '{sum+=$2} END {print sum+0}')
             local output=$(grep -o '"output_tokens":[0-9]*' "$iter_log" | awk -F: '{sum+=$2} END {print sum+0}')

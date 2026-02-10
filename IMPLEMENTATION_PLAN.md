@@ -346,7 +346,31 @@ Phase 4 (validation and polish):
   - ✓ File is functional: Proper version compatibility checking implementation
 - Resolution: Auto-resolved when H2-1 completed, as predicted in task description
 
-**Impact**: Client installation now supports optional Claude Code integration with proper user consent, clear messaging, idempotent alias creation, and accurate env template documentation. Server test suite comprehensively validates both OpenAI and Anthropic API surfaces with proper progress tracking. Complete version management workflow: users can check compatibility, pin working versions, and downgrade to known-good configurations when upgrades break compatibility. Client uninstallation now properly cleans up both v1 environment sourcing and v2+ Claude Code aliases from shell profiles. Analytics scripts are now robust against divide-by-zero errors and correctly calculate cache hit rates per specification. Client test suite validates all v2+ functionality with 12 new tests and flexible filtering flags. Analytics decision matrix provides actionable guidance on operation balance with shallow:deep ratio tracking. Client SETUP.md now comprehensively documents the complete v2+ user experience including installation, usage, version management, analytics workflow, and troubleshooting. Server README.md now accurately reflects v2+ test suite with 26 tests and Anthropic API coverage documentation.
+### Bug Fix: grep -c Exit Code Handling
+**Files**: `client/scripts/test.sh`, `client/scripts/compare-analytics.sh`, `client/scripts/loop-with-analytics.sh`
+- **Problem**: `grep -c` returns exit code 1 when finding 0 matches, causing `|| echo 0` fallback to append a second "0", resulting in "0\n0" string that breaks arithmetic comparisons with "syntax error: invalid arithmetic operator"
+- **Root cause**: Command substitution captures both grep's "0" output AND the fallback "0" from the `|| echo 0` when grep exits with code 1
+- **Fix pattern implemented**:
+  ```bash
+  # Old (broken):
+  VAR=$(grep -c "pattern" file || echo 0)
+
+  # New (correct):
+  VAR=$(grep -c "pattern" file | head -n 1 | tr -cd '0-9' || echo "0")
+  VAR=${VAR:-0}  # Additional fallback for empty strings
+  ```
+- **Applied to**:
+  - `client/scripts/test.sh`: Fixed `TOTAL_TESTS` counting (lines using `grep -c`)
+  - `client/scripts/compare-analytics.sh`: Fixed all token counting variables
+  - `client/scripts/loop-with-analytics.sh`: Fixed all metrics extraction from analytics JSON
+- **Why it works**:
+  - `head -n 1`: Ensures only first line of output (prevents double "0")
+  - `tr -cd '0-9'`: Strips all non-digit characters (sanitizes output)
+  - `|| echo "0"`: Fallback only triggers if entire pipeline fails (not just grep)
+  - `${VAR:-0}`: Final safety net for empty strings or unset variables
+- **Testing**: All three scripts now handle zero-match cases gracefully without syntax errors in arithmetic operations
+
+**Impact**: Client installation now supports optional Claude Code integration with proper user consent, clear messaging, idempotent alias creation, and accurate env template documentation. Server test suite comprehensively validates both OpenAI and Anthropic API surfaces with proper progress tracking. Complete version management workflow: users can check compatibility, pin working versions, and downgrade to known-good configurations when upgrades break compatibility. Client uninstallation now properly cleans up both v1 environment sourcing and v2+ Claude Code aliases from shell profiles. Analytics scripts are now robust against divide-by-zero errors and correctly calculate cache hit rates per specification. Client test suite validates all v2+ functionality with 12 new tests and flexible filtering flags. Analytics decision matrix provides actionable guidance on operation balance with shallow:deep ratio tracking. Client SETUP.md now comprehensively documents the complete v2+ user experience including installation, usage, version management, analytics workflow, and troubleshooting. Server README.md now accurately reflects v2+ test suite with 26 tests and Anthropic API coverage documentation. All test and analytics scripts now correctly handle grep -c edge cases without arithmetic syntax errors.
 
 ---
 
