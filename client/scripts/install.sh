@@ -246,7 +246,7 @@ if [[ -z "$TAILSCALE_IP" ]]; then
 
     while [[ "$CONNECTED" == "false" ]]; do
         # Wait for user to press Enter
-        read -r -p "Press Enter to check connection status (or Ctrl+C to exit and run script later)... "
+        read -r -p "Press Enter to check connection status (or Ctrl+C to exit and run script later)... " < /dev/tty
 
         # Check status
         echo "Checking Tailscale status..."
@@ -284,7 +284,7 @@ section_break "Environment Configuration"
 # Step 6: Prompt for server hostname
 echo ""
 prompt "Enter the server hostname (default: remote-ollama):"
-read -r SERVER_HOSTNAME
+read -r SERVER_HOSTNAME < /dev/tty
 if [[ -z "$SERVER_HOSTNAME" ]]; then
     SERVER_HOSTNAME="remote-ollama"
 fi
@@ -332,7 +332,7 @@ info "✓ Created: $ENV_FILE"
 # Step 9: Prompt for shell profile modification consent
 echo ""
 prompt "Update $SHELL_PROFILE to source the environment? (required for tools to work) [Y/n]:"
-read -r CONSENT
+read -r CONSENT < /dev/tty
 CONSENT=${CONSENT:-Y}
 if [[ "$CONSENT" =~ ^[Yy]$ ]]; then
     info "Updating shell profile..."
@@ -392,7 +392,7 @@ else
                 echo "We need to reinstall pipx to use Python $PYTHON_VERSION instead."
                 echo ""
                 prompt "Reinstall pipx with Python $PYTHON_VERSION for compatibility? [Y/n]:"
-                read -r REINSTALL_PIPX
+                read -r REINSTALL_PIPX < /dev/tty
                 REINSTALL_PIPX=${REINSTALL_PIPX:-Y}
 
                 if [[ "$REINSTALL_PIPX" =~ ^[Yy]$ ]]; then
