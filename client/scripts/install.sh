@@ -520,7 +520,7 @@ if [[ "$SERVER_REACHABLE" == "true" ]]; then
     echo -e "  ${GREEN}aider --model ollama/qwen2.5-coder:7b${NC}    # Specify model"
     echo -e "  ${GREEN}aider --yes${NC}                    # Auto-accept suggestions"
     echo ""
-    echo "The server has 1 model available. Use ${YELLOW}aider --models${NC} to list them."
+    echo -e "Aider will automatically connect to your server with ${GREEN}1 model${NC} available."
 else
     echo "Server not reachable yet. Once it's running, reload your shell:"
     echo ""
