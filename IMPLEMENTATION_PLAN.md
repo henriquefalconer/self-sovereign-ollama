@@ -476,7 +476,7 @@ Every spec file was read and cross-referenced. Findings are grouped below.
 
 2. **curl-pipe URL corrected**: `client/SETUP.md` line 12 now correctly references branch `master` (repository's default branch).
 
-3. **curl-pipe install requires self-contained script**: `client/SETUP.md` line 12 references `curl -fsSL ...install.sh | bash`. When piped, `$0` is `bash` and there is no filesystem context. The script cannot assume `../config/env.template` exists. **Prescribed solution**: embed the env.template content as a heredoc fallback inside install.sh. If the file exists on disk (local clone mode), read it; otherwise use the embedded copy. This makes the script self-contained for curl-pipe while still using the canonical template file when available.
+3. **curl-pipe install requires self-contained script**: `client/SETUP.md` line 12 references `bash <(curl -fsSL ...install.sh)`. When piped, `$0` is `bash` and there is no filesystem context. The script cannot assume `../config/env.template` exists. **Prescribed solution**: embed the env.template content as a heredoc fallback inside install.sh. If the file exists on disk (local clone mode), read it; otherwise use the embedded copy. This makes the script self-contained for curl-pipe while still using the canonical template file when available.
 
 4. **API contract defines 4 environment variables** (`client/specs/API_CONTRACT.md` lines 39-43): `OLLAMA_API_BASE`, `OPENAI_API_BASE`, `OPENAI_API_KEY`, and optionally `AIDER_MODEL`. The env.template and install script must set all four (with AIDER_MODEL commented out as optional). Variables must use `export` so they propagate to child processes like Aider.
 

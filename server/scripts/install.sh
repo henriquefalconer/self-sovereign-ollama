@@ -447,7 +447,7 @@ if [[ -n "$TAILSCALE_IP" ]]; then
     echo ""
     echo "  2. Install the client on your laptop/desktop:"
     echo ""
-    echo -e "     ${BLUE}curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-ollama/master/client/scripts/install.sh | bash${NC}"
+    echo -e "     ${BLUE}bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-ollama/master/client/scripts/install.sh)${NC}"
     echo ""
     echo "  3. Test the connection from your client:"
     echo ""

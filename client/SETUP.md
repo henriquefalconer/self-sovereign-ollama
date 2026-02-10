@@ -9,7 +9,7 @@ Choose one of the following methods:
 Run the installer directly via curl:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-ollama/master/client/scripts/install.sh | bash
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/remote-ollama/master/client/scripts/install.sh)
 ```
 
 ### Option 2: Clone and Install
