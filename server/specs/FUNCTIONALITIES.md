@@ -1,5 +1,12 @@
 # private-ai-server Functionalities (v1)
 
+## Core Functionality
+
+- One-time installer that configures Ollama as a LaunchAgent service
+- Uninstaller that removes only server-side LaunchAgent configuration
+- Ollama serves OpenAI-compatible HTTP endpoint at `/v1`
+- Optional model pre-warming script for boot-time loading
+
 ## Exposed API
 
 - OpenAI-compatible HTTP endpoint at `/v1`

@@ -18,6 +18,16 @@
 - Runs self-test: `curl -sf http://localhost:11434/v1/models`
 - Idempotent: safe to re-run without breaking existing setup
 
+## scripts/uninstall.sh
+
+- Stops the Ollama LaunchAgent service via `launchctl bootout`
+- Removes `~/Library/LaunchAgents/com.ollama.plist`
+- Optionally cleans up Ollama logs from `/tmp/` (`ollama.stdout.log`, `ollama.stderr.log`)
+- Leaves Homebrew, Tailscale, and Ollama binary untouched (user may want to keep them)
+- Leaves downloaded models in `~/.ollama/models/` untouched (valuable data)
+- Provides clear summary of what was removed and what remains
+- Handles edge cases gracefully (service not running, plist missing, partial installation)
+
 ## scripts/warm-models.sh
 
 - Accepts model names as command-line arguments (e.g., `qwen2.5-coder:32b deepseek-r1:70b`)
