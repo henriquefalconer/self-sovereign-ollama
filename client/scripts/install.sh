@@ -496,9 +496,13 @@ fi
 
 # Final summary
 section_break
-echo -e "${GREEN}✓ Installation Complete!${NC}"
+echo "╔════════════════════════════════════════════════════════════════╗"
+echo "║                                                                ║"
+echo "║                  ✓  Installation Complete!                    ║"
+echo "║                                                                ║"
+echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "Aider is ready and configured to use your remote Ollama server."
+echo -e "${GREEN}Aider is ready and configured to use your remote Ollama server.${NC}"
 echo ""
 
 # Determine actual shell command for reload
