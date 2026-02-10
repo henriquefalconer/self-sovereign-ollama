@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# ai-client uninstall script
+# remote-ollama ai-client uninstall script
 # Removes only client-side changes made by install.sh
 # Leaves Tailscale, Homebrew, and pipx untouched
 # Source: client/specs/SCRIPTS.md lines 14-18
@@ -27,7 +27,7 @@ error() {
 
 # Banner
 echo "================================================"
-echo "  ai-client Uninstall Script"
+echo "  remote-ollama ai-client Uninstall"
 echo "  Removes client-side changes and configuration"
 echo "================================================"
 echo ""

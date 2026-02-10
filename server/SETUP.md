@@ -77,7 +77,7 @@ ollama pull <model-name>   # repeat for desired models
 
 In Tailscale admin console at tailscale.com:
 
-1. Assign a machine name e.g. "ai-server"
+1. Assign a machine name e.g. "remote-ollama"
 2. Create tags e.g. tag:ai-client
 3. Add ACL rule example:
 
@@ -98,7 +98,7 @@ In Tailscale admin console at tailscale.com:
 From an authorized client machine:
 
 ```bash
-curl http://ai-server:11434/v1/chat/completions \
+curl http://remote-ollama:11434/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "any-available-model",

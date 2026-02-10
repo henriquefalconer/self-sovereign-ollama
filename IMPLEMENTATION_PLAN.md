@@ -430,7 +430,7 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
   export OPENAI_API_KEY=ollama
   # export AIDER_MODEL=ollama/<model-name>
   ```
-- [x] Use `__HOSTNAME__` as the placeholder (install.sh substitutes with actual hostname, default `ai-server`)
+- [x] Use `__HOSTNAME__` as the placeholder (install.sh substitutes with actual hostname, default `remote-ollama`)
 - [x] Include `export` on each variable so they propagate to child processes when sourced
 - [x] Keep `AIDER_MODEL` commented out (optional per API contract)
 
@@ -489,7 +489,7 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
   - Ref: `server/SETUP.md` line 61 (now uses modern `launchctl bootstrap`)
   - Ref: `server/SETUP.md` line 66 for `launchctl kickstart -k` as the restart command
 - [x] Verify Ollama is listening on port 11434 with retry loop (timeout ~30s)
-- [x] Prompt user to set Tailscale machine name to `ai-server` (or custom name)
+- [x] Prompt user to set Tailscale machine name to `remote-ollama` (or custom name)
   - Ref: `server/SETUP.md` line 82
 - [x] Print Tailscale ACL JSON snippet for admin console
   - Ref: `server/SETUP.md` lines 86-96, `server/specs/SECURITY.md` lines 11-12
@@ -545,7 +545,7 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
 - [x] Check/install Tailscale GUI app; open for login + device approval
   - Ref: `client/specs/REQUIREMENTS.md` line 12
   - Ref: `client/specs/SCRIPTS.md` line 6
-- [x] Prompt for server hostname (default: `ai-server`)
+- [x] Prompt for server hostname (default: `remote-ollama`)
   - Ref: `client/specs/SCRIPTS.md` line 7
 - [x] Create `~/.ai-client/` directory
   - Ref: `client/specs/SCRIPTS.md` line 8

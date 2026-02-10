@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# ai-server install script
+# remote-ollama ai-server install script
 # Automates the setup of Ollama + Tailscale for private LLM inference
 # Source: server/specs/* and server/SETUP.md
 
@@ -53,7 +53,7 @@ important_section() {
 
 # Banner
 echo "================================================"
-echo "  ai-server Installation Script"
+echo "  remote-ollama ai-server Installation"
 echo "================================================"
 echo ""
 
@@ -361,7 +361,7 @@ if [[ -n "$TAILSCALE_IP" ]]; then
     echo ""
     echo -e "  Visit: ${BLUE}https://login.tailscale.com/admin/machines${NC}"
     echo -e "  Find this device: ${GREEN}$TAILSCALE_IP${NC}"
-    echo -e "  Set machine name to: ${GREEN}ai-server${NC}"
+    echo -e "  Set machine name to: ${GREEN}remote-ollama${NC}"
     echo ""
     section_break
     echo "┌─────────────────────────────────────────────────────────────┐"
@@ -451,7 +451,7 @@ if [[ -n "$TAILSCALE_IP" ]]; then
     echo ""
     echo "  3. Test the connection from your client:"
     echo ""
-    echo -e "     ${BLUE}curl http://ai-server:11434/v1/models${NC}"
+    echo -e "     ${BLUE}curl http://remote-ollama:11434/v1/models${NC}"
     echo ""
     section_break
     echo "Troubleshooting commands:"
