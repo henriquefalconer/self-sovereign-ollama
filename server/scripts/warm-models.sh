@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# remote-ollama-server model warming script
+# ollama-server model warming script
 # Pre-loads specified models into memory for faster first-request latency
 # Source: server/specs/FUNCTIONALITIES.md line 17-19
 
@@ -45,7 +45,7 @@ fi
 
 # Banner
 echo "================================================"
-echo "  remote-ollama-server Model Warming Script"
+echo "  ollama-server Model Warming Script"
 echo "================================================"
 echo ""
 info "Models to warm: $*"

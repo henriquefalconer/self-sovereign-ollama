@@ -1,4 +1,4 @@
-# remote-ollama-server Architecture
+# ollama-server Architecture
 
 ## Core Principles
 

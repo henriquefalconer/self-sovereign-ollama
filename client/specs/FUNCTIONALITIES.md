@@ -1,4 +1,4 @@
-# remote-ollama-client Functionalities (v1)
+# ollama-client Functionalities (v1)
 
 ## Core Functionality
 

@@ -1,4 +1,4 @@
-# remote-ollama-server External Interfaces
+# ollama-server External Interfaces
 
 ## Primary Interface
 

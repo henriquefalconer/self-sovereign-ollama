@@ -1,4 +1,4 @@
-# remote-ollama-server Functionalities (v1)
+# ollama-server Functionalities (v1)
 
 ## Core Functionality
 

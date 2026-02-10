@@ -1,4 +1,4 @@
-# remote-ollama-server Repository Layout
+# ollama-server Repository Layout
 
 ```
 server/

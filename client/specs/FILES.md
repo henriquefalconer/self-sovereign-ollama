@@ -1,4 +1,4 @@
-# remote-ollama-client Repository Layout
+# ollama-client Repository Layout
 
 ```
 client/

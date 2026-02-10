@@ -1,4 +1,4 @@
-# remote-ollama-server Security Model
+# ollama-server Security Model
 
 ## Attack Surface Reduction
 
