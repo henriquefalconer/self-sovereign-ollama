@@ -1,3 +1,8 @@
+<!--
+ Copyright (c) 2026 Henrique Falconer. All rights reserved.
+ SPDX-License-Identifier: Proprietary
+-->
+
 # Implementation Plan
 
 This document outlines the implementation roadmap for both the private-ai-server and private-ai-client components.

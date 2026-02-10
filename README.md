@@ -1,3 +1,8 @@
+<!--
+ Copyright (c) 2026 Henrique Falconer. All rights reserved.
+ SPDX-License-Identifier: Proprietary
+-->
+
 # private-ai-api
 
 A monorepo containing both the private AI server and client components for running a fully private, OpenAI-compatible LLM inference infrastructure.
@@ -69,4 +74,4 @@ See [client/README.md](client/README.md) for client installation and usage.
 
 ## License
 
-[Specify license here]
+Proprietary. Copyright (c) 2026 Henrique Falconer. All rights reserved.
