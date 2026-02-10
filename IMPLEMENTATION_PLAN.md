@@ -978,8 +978,8 @@ Every implemented script was compared line-by-line against its spec requirements
 # v2+ Implementation Plan (Claude Code / Anthropic API)
 
 **Created**: 2026-02-10
-**Last Updated**: 2026-02-10 (second audit pass -- added H2-6, H3-4, H3-5, H4-1; updated H3-1)
-**Status**: NOT STARTED
+**Last Updated**: 2026-02-10 (fourth audit pass -- 3-agent comprehensive audit; added H1-6, H3-6, H4-2, H4-3, H4-4; updated H2-5, H3-1, audit summary, dependency graph, execution order, effort table)
+**Status**: PHASE 1 COMPLETE, PHASES 2-4 TODO (7 of 22 items complete)
 **Scope**: All work required to achieve full spec implementation beyond v1 (Aider/OpenAI)
 
 ## v2+ Audit Summary
@@ -990,9 +990,48 @@ Every implemented script was compared line-by-line against its spec requirements
 | Server v2+ (Anthropic API) | FOUNDATION COMPLETE | Spec updated with `/v1/messages` test requirements; SETUP.md documents Anthropic API; implementation tests remain |
 | Client v1 (Aider) | COMPLETE | All scripts, 28 tests, docs |
 | Client v2+ (Claude Code) | FOUNDATION COMPLETE | README.md corrected; env.template has Anthropic vars; SCRIPTS.md updated with v2+ test specs; implementation remains |
-| Root-level analytics | PARTIALLY COMPLETE | Scripts exist but have divide-by-zero bugs; missing spec-required decision matrix output |
-| Documentation | FOUNDATION COMPLETE | Client README.md corrected; server/client SETUP.md updated; SCRIPTS.md specs updated for v2+ |
+| Root-level analytics | PARTIALLY COMPLETE | Scripts exist but have divide-by-zero bugs; per-iteration cache hit rate uses wrong formula (H3-6, bundled with H3-1); missing spec-required decision matrix output |
+| Documentation | FOUNDATION COMPLETE | Client README.md corrected; server/client SETUP.md updated; SCRIPTS.md specs updated for v2+; ANALYTICS_README.md references non-existent script (H4-3, auto-resolved by H2-1) |
+| Curl-pipe install | GAP FOUND | Embedded env template in install.sh missing Anthropic variables (H1-6) |
+| Install defaults | GAP FOUND | Server hostname default `"remote-ollama"` vs spec `"ai-server"` (H4-2) |
 | Plan internal consistency | ✅ FIXED | Priority 1 env.template example corrected (removed stale `/v1` URL) |
+
+### Three-Agent Audit Findings (2026-02-10)
+
+**Server audit** (9 gaps found):
+- Gap 1 (HIGH): No `/v1/messages` tests -- already tracked as H1-3
+- Gap 2 (MEDIUM): `TOTAL_TESTS` counter hardcoded to 20 -- part of H1-3
+- Gap 3 (MEDIUM): Missing `--skip-anthropic-tests` flag -- part of H1-3
+- Gap 4 (MEDIUM): No Ollama version detection for auto-skip -- part of H1-3
+- Gap 5 (LOW): `show_progress` function defined but never called -- **NEW, added as H4-4**
+- Gap 6 (LOW): README.md missing Anthropic test documentation -- already tracked as H3-3
+- Gap 7 (LOW): Plist XML comment could confuse users -- acknowledged, not tracked (valid XML)
+- Gap 8 (LOW): No time estimates for large model downloads -- optional per spec, not tracked
+- Gap 9 (MEDIUM): v2+ hardware testing blocked -- already tracked as H3-2
+
+**Client audit** (20 gaps found):
+- Gaps 1-3 (HIGH): Missing scripts check-compatibility, pin-versions, downgrade-claude -- H2-1, H2-2, H2-3
+- Gap 4 (HIGH): install.sh missing Claude Code integration -- H1-4
+- Gap 5 (HIGH): uninstall.sh missing claude-ollama marker removal -- H2-4
+- Gaps 6-7 (HIGH): test.sh missing Claude Code and version management tests -- H2-5
+- Gap 8 (MEDIUM): test.sh missing `--skip-claude`, `--v1-only`, `--v2-only` flags -- **bundled into H2-5**
+- Gap 9 (CRITICAL): compare-analytics.sh divide-by-zero crash -- H3-1
+- Gap 10 (MEDIUM): loop-with-analytics.sh per-iteration cache hit rate formula wrong -- **NEW, added as H3-6, bundled into H3-1**
+- Gaps 11-12 (MEDIUM): compare-analytics.sh missing decision matrix and mode detection -- H3-1
+- Gap 13 (MEDIUM): SETUP.md missing all v2+ documentation -- H3-5
+- Gaps 14-15 (MEDIUM): install.sh embedded template missing Anthropic variables -- **NEW, added as H1-6**
+- Gap 16 (LOW): install.sh hostname default "remote-ollama" vs spec "ai-server" -- **NEW, added as H4-2**
+- Gap 17 (LOW): summary.md analysis text quality concern -- H3-1
+- Gap 18 (LOW): compare-analytics.sh does not parse mode from metadata -- H3-1
+- Gap 19 (LOW): ANALYTICS_README.md references non-existent check-compatibility.sh -- **NEW, added as H4-3**
+- Gap 20 (LOW): install.sh final summary has no v2+ guidance -- part of H1-4
+
+**TODO/placeholder audit** (0 issues):
+- No TODO/FIXME/HACK/placeholder markers in any source files
+- No stub or empty function bodies
+- No flaky or broken test patterns
+- All skip mechanisms are intentional with clear enablement guidance
+- 3 missing files (check-compatibility.sh, pin-versions.sh, downgrade-claude.sh) all tracked as H2-1/H2-2/H2-3
 
 ## Prioritized Implementation Items
 
@@ -1081,6 +1120,20 @@ Every implemented script was compared line-by-line against its spec requirements
 
 ---
 
+### H1-6: Sync install.sh embedded env template with canonical env.template (Anthropic vars missing)
+
+- **Priority**: H1 (medium -- curl-pipe install path produces incomplete env file)
+- **What**: `client/scripts/install.sh` lines 311-319 contain an embedded env template used during curl-pipe mode (`curl | bash`). This embedded template was not updated when H1-5 added commented-out Anthropic variables to the canonical `client/config/env.template`. As a result, users who install via `curl | bash` (the primary install method documented in `client/SETUP.md`) get an env file missing the Anthropic variable comments, while users who install from a local clone get the complete template. The two templates must stay in sync.
+- **Action**:
+  1. Copy the commented-out Anthropic variable block from `client/config/env.template` into the embedded template in `install.sh` (around lines 311-319)
+  2. Ensure the embedded template matches the canonical template exactly
+  3. Add a code comment in `install.sh` near the embedded template: `# IMPORTANT: Keep in sync with client/config/env.template`
+- **Spec references**: `client/specs/API_CONTRACT.md` lines 149-153 (Anthropic env vars)
+- **Dependencies**: H1-5 (already complete), can be bundled with H1-4 or done standalone
+- **Effort**: Trivial (copy 4 lines from one location to another)
+
+---
+
 ### H2-1: Create client/scripts/check-compatibility.sh
 
 - **Priority**: H2 (important v2+ -- enables safe Claude Code updates)
@@ -1163,7 +1216,11 @@ Every implemented script was compared line-by-line against its spec requirements
   - Anthropic env vars in alias are correct
   - Version management scripts exist and have valid syntax
   - `.version-lock` file format (if exists)
-- **Action**: Add a new "Claude Code Integration Tests (v2+)" category and a "Version Management Tests (v2+)" category. These should be skippable with a `--skip-claude` flag. Tests to add:
+- **Action**: Add a new "Claude Code Integration Tests (v2+)" category and a "Version Management Tests (v2+)" category. Implement the following filtering flags:
+  - `--skip-claude` -- Skip all v2+ tests (Claude Code + version management) when Claude Code is not installed
+  - `--v1-only` -- Run only v1 (Aider/OpenAI) tests, skip all v2+ tests
+  - `--v2-only` -- Run only v2+ (Claude Code/Anthropic) tests, skip all v1 tests
+  Tests to add:
   1. Claude Code binary available (`which claude`)
   2. `claude-ollama` alias present in shell profile (check markers)
   3. `POST /v1/messages` non-streaming request to server succeeds
@@ -1173,6 +1230,7 @@ Every implemented script was compared line-by-line against its spec requirements
   7. `downgrade-claude.sh` exists and has valid syntax
   8. `.version-lock` file format validation (if file exists)
   - Update `TOTAL_TESTS` counter
+  - Implement flag parsing in the argument handling section (alongside existing `--verbose`, `--quick`, etc.)
 - **Spec references**: `client/specs/SCRIPTS.md` lines 61-138, `client/specs/CLAUDE_CODE.md` lines 119-131 (tool use capabilities), `client/specs/API_CONTRACT.md` lines 75-164 (Anthropic API contract)
 - **Dependencies**: H2-6 (client SCRIPTS.md spec must specify v2+ test requirements first), H1-3 (server tests should pass first), H1-4 (install creates what we test), H2-1/H2-2/H2-3 (version scripts must exist)
 - **Effort**: Medium (8-10 new tests following existing patterns)
@@ -1215,10 +1273,11 @@ Every implemented script was compared line-by-line against its spec requirements
      - Accept or detect mode (plan vs build) from run metadata
      - For plan mode: always output "Recommendation: Keep Anthropic (reasoning-intensive workload)"
      - For build mode: compare metrics against thresholds and output "Consider Ollama" or "Keep Anthropic" with rationale
-  4. Audit remaining metrics capture against `client/specs/ANALYTICS.md` lines 424-438 (implementation requirements)
-  5. Validate that `analytics/run-*/summary.md` format matches spec (lines 168-227)
-  6. Document any additional gaps and fix if present
-- **Spec references**: `client/specs/ANALYTICS.md` (entire file, especially lines 424-438, 440-454, 474-485), `client/specs/FUNCTIONALITIES.md` lines 22-37
+  4. Fix per-iteration cache hit rate formula in `loop-with-analytics.sh` line 268: currently uses `cache_read * 100 / total_input` (where `total_input` includes `input_tokens`), but per `client/specs/ANALYTICS.md` lines 468-471 the correct formula is `cache_read * 100 / (cache_creation + cache_read)`. Note: the aggregate calculation at line 535 already uses the correct formula -- this is an inconsistency within the same file. (See also H3-6 for tracking.)
+  5. Audit remaining metrics capture against `client/specs/ANALYTICS.md` lines 424-438 (implementation requirements)
+  6. Validate that `analytics/run-*/summary.md` format matches spec (lines 168-227)
+  7. Document any additional gaps and fix if present
+- **Spec references**: `client/specs/ANALYTICS.md` (entire file, especially lines 424-438, 440-454, 468-471, 474-485), `client/specs/FUNCTIONALITIES.md` lines 22-37
 - **Dependencies**: None
 - **Effort**: Medium (bug fixes are small, but decision matrix implementation requires new logic)
 
@@ -1292,6 +1351,20 @@ Every implemented script was compared line-by-line against its spec requirements
 
 ---
 
+### H3-6: Fix per-iteration cache hit rate formula in loop-with-analytics.sh
+
+- **Priority**: H3 (medium -- analytics correctness issue, per-iteration metric uses wrong formula)
+- **What**: `loop-with-analytics.sh` line 268 computes per-iteration cache hit rate as `cache_read * 100 / total_input` where `total_input` includes `input_tokens` (non-cache tokens). Per `client/specs/ANALYTICS.md` lines 468-471, the correct formula is `cache_read * 100 / (cache_creation + cache_read)` -- i.e., cache hits as a percentage of total cacheable tokens only. The aggregate calculation at line 535 of the same file already uses the correct formula, creating an inconsistency within `loop-with-analytics.sh` itself.
+- **Action**:
+  1. Replace the per-iteration cache hit rate formula at line 268 from `cache_read * 100 / total_input` to `cache_read * 100 / (cache_creation + cache_read)`
+  2. Add a guard for the case where `(cache_creation + cache_read) == 0` to avoid divide-by-zero
+  3. Verify that the per-iteration summary output matches the aggregate summary output format
+- **Spec references**: `client/specs/ANALYTICS.md` lines 468-471 (cache hit rate formula)
+- **Dependencies**: None, but should be bundled with H3-1 (analytics fix + audit)
+- **Effort**: Trivial (single formula change + zero-guard)
+
+---
+
 ### H4-1: Fix IMPLEMENTATION_PLAN.md Priority 1 env.template example ✅ COMPLETE
 
 - **Priority**: H4 (internal documentation inconsistency -- no user impact)
@@ -1303,29 +1376,73 @@ Every implemented script was compared line-by-line against its spec requirements
 
 ---
 
+### H4-2: Fix install.sh server hostname default inconsistency with spec
+
+- **Priority**: H4 (low -- likely intentional for specific deployment, but does not match spec)
+- **What**: `client/scripts/install.sh` line 289 sets the default server hostname to `"remote-ollama"` when the user does not provide one. However, `client/specs/SCRIPTS.md` line 10 specifies that the default hostname should be `"ai-server"`. This may have been intentionally changed for a specific Tailscale deployment topology, but it creates a spec-vs-implementation mismatch that should be explicitly resolved.
+- **Action**:
+  1. If `"remote-ollama"` is intentional: update `client/specs/SCRIPTS.md` to document `"remote-ollama"` as the default, with a note explaining the naming convention
+  2. If `"ai-server"` is correct: update `client/scripts/install.sh` line 289 to use `"ai-server"` as the default
+  3. Either way, ensure spec and implementation agree
+- **Spec references**: `client/specs/SCRIPTS.md` line 10 (default hostname spec)
+- **Dependencies**: None
+- **Effort**: Trivial (single string change in one file)
+
+---
+
+### H4-3: ANALYTICS_README.md references non-existent check-compatibility.sh
+
+- **Priority**: H4 (low -- documentation references script that does not yet exist)
+- **What**: `ANALYTICS_README.md` line 304 references `check-compatibility.sh` as if it already exists. This script is specified in `client/specs/VERSION_MANAGEMENT.md` but has not been implemented yet (see H2-1). This creates a misleading reference in the analytics documentation.
+- **Action**: This will be auto-resolved when H2-1 creates the `check-compatibility.sh` script. No separate action needed unless H2-1 is deprioritized, in which case a "not yet implemented" note should be added to the ANALYTICS_README.md reference.
+- **Spec references**: `client/specs/VERSION_MANAGEMENT.md` lines 66-131 (check-compatibility spec)
+- **Dependencies**: H2-1 (auto-resolves this issue)
+- **Effort**: None (auto-resolved by H2-1)
+
+---
+
+### H4-4: Fix server test.sh show_progress function never called
+
+- **Priority**: H4 (low -- cosmetic issue, all tests still run and report correctly via pass/fail/skip)
+- **What**: `server/scripts/test.sh` defines a `show_progress` function at lines 45-48 that increments `CURRENT_TEST` and prints `[Test $CURRENT_TEST/$TOTAL_TESTS]`. However, this function is never called anywhere in the script. The `CURRENT_TEST` variable (line 20) remains at 0 throughout execution. Tests directly call `pass`/`fail`/`skip` without ever calling `show_progress`. As a result, the per-test progress indicator (e.g., "Running test 5/20...") specified in `server/specs/SCRIPTS.md` line 202 is never shown, regardless of verbose mode.
+- **Action**:
+  1. Add a `show_progress` call before each test or test group in `server/scripts/test.sh`
+  2. Verify that `CURRENT_TEST` increments correctly and matches `TOTAL_TESTS` at the end
+  3. Optionally: apply the same fix to `client/scripts/test.sh` if the same pattern exists there
+- **Spec references**: `server/specs/SCRIPTS.md` line 202 (progress indication requirement)
+- **Dependencies**: None, but should be bundled with H1-3 (when adding new Anthropic tests, add `show_progress` calls to all tests)
+- **Effort**: Small (add ~20 function calls to existing test script)
+
+---
+
 ## Dependency Graph
 
 ```
-H1-1 (README fix)              ──── standalone, do first
-H1-2 (server spec update)      ──── standalone
-H1-3 (server /v1/messages)     ──── depends on H1-2
-H1-4 (install.sh claude)       ──── standalone
-H1-5 (env.template)            ──── standalone, supports H1-4
+H1-1 (README fix)              ──── standalone, do first                          ✅ COMPLETE
+H1-2 (server spec update)      ──── standalone                                   ✅ COMPLETE
+H1-3 (server /v1/messages)     ──── depends on H1-2                              ⬜ TODO
+H1-4 (install.sh claude)       ──── standalone                                   ⬜ TODO
+H1-5 (env.template)            ──── standalone, supports H1-4                    ✅ COMPLETE
+H1-6 (embedded template sync)  ──── depends on H1-5, bundle with H1-4           ⬜ TODO
 
-H2-1 (check-compatibility)     ──── standalone
-H2-2 (pin-versions)            ──── standalone
-H2-3 (downgrade-claude)        ──── depends on H2-2
-H2-4 (uninstall v2+)           ──── depends on H1-4
-H2-5 (test.sh v2+)             ──── depends on H2-6, H1-3, H1-4, H2-1, H2-2, H2-3
-H2-6 (client SCRIPTS.md spec)  ──── standalone
+H2-1 (check-compatibility)     ──── standalone                                   ⬜ TODO
+H2-2 (pin-versions)            ──── standalone                                   ⬜ TODO
+H2-3 (downgrade-claude)        ──── depends on H2-2                              ⬜ TODO
+H2-4 (uninstall v2+)           ──── depends on H1-4                              ⬜ TODO
+H2-5 (test.sh v2+)             ──── depends on H2-6, H1-3, H1-4, H2-1, H2-2, H2-3  ⬜ TODO
+H2-6 (client SCRIPTS.md spec)  ──── standalone                                   ✅ COMPLETE
 
-H3-1 (analytics fix+audit)     ──── standalone
-H3-2 (hardware testing)        ──── depends on ALL H1 + H2
-H3-3 (server README update)    ──── depends on H1-3, H3-2
-H3-4 (server SETUP.md update)  ──── standalone
-H3-5 (client SETUP.md update)  ──── depends on H1-4, H2-1, H2-2, H2-3
+H3-1 (analytics fix+audit)     ──── standalone, bundle H3-6                      ⬜ TODO
+H3-2 (hardware testing)        ──── depends on ALL H1 + H2                       ⬜ TODO
+H3-3 (server README update)    ──── depends on H1-3, H3-2                        ⬜ TODO
+H3-4 (server SETUP.md update)  ──── standalone                                   ✅ COMPLETE
+H3-5 (client SETUP.md update)  ──── depends on H1-4, H2-1, H2-2, H2-3           ⬜ TODO
+H3-6 (cache hit rate formula)  ──── standalone, bundle with H3-1                 ⬜ TODO
 
-H4-1 (plan /v1 URL fix)        ──── standalone
+H4-1 (plan /v1 URL fix)        ──── standalone                                   ✅ COMPLETE
+H4-2 (hostname default)        ──── standalone                                   ⬜ TODO
+H4-3 (analytics readme ref)    ──── auto-resolved by H2-1                        ⬜ TODO
+H4-4 (show_progress unused)    ──── standalone, bundle with H1-3                 ⬜ TODO
 ```
 
 ## Recommended Execution Order
@@ -1341,47 +1458,55 @@ H4-1 (plan /v1 URL fix)        ──── standalone
 5. ✅ H3-4 -- Update server SETUP.md with Anthropic API docs (standalone)
 
 **Phase 2: Core Implementation (partially parallelizable)**
-6. H1-3 -- Server /v1/messages tests (depends on H1-2)
-7. H1-4 -- Client install.sh Claude Code integration (depends on H1-5)
-8. H2-1 -- check-compatibility.sh (independent)
+6. H1-3 + H4-4 -- Server /v1/messages tests AND fix show_progress calls (depends on H1-2; bundle H4-4 since both modify test.sh)
+7. H1-4 + H1-6 -- Client install.sh Claude Code integration AND sync embedded template (depends on H1-5; bundle since both modify install.sh)
+8. H2-1 -- check-compatibility.sh (independent; auto-resolves H4-3)
 9. H2-2 -- pin-versions.sh (independent)
 
 **Phase 3: Dependent Implementation**
 10. H2-3 -- downgrade-claude.sh (depends on H2-2)
 11. H2-4 -- Uninstall v2+ cleanup (depends on H1-4)
-12. H2-5 -- Client test.sh v2+ tests (depends on H2-6, H1-3, H1-4, H2-1, H2-2, H2-3)
+12. H2-5 -- Client test.sh v2+ tests with --skip-claude/--v1-only/--v2-only flags (depends on H2-6, H1-3, H1-4, H2-1, H2-2, H2-3)
 
 **Phase 4: Validation and Polish**
-13. H3-1 -- Analytics bug fixes, decision matrix, and audit (independent)
-14. H3-2 -- Hardware testing (depends on all above)
-15. H3-3 -- Server README update (depends on H3-2)
-16. H3-5 -- Client SETUP.md update (depends on H1-4, H2-1, H2-2, H2-3)
+13. H3-1 + H3-6 -- Analytics bug fixes, cache hit rate formula fix, decision matrix, and audit (independent; bundle H3-6)
+14. H4-2 -- Resolve hostname default spec mismatch (independent, trivial)
+15. H3-2 -- Hardware testing (depends on all above)
+16. H3-3 -- Server README update (depends on H3-2)
+17. H3-5 -- Client SETUP.md update (depends on H1-4, H2-1, H2-2, H2-3)
 
 ## Effort Estimation Summary
 
-| Priority | Item | Effort | Files Modified/Created |
-|----------|------|--------|----------------------|
-| H1-1 | README fix | Trivial | `client/README.md` (modify) |
-| H1-2 | Server spec update | Small | `server/specs/SCRIPTS.md` (modify) |
-| H1-3 | Server /v1/messages tests | Medium | `server/scripts/test.sh` (modify) |
-| H1-4 | Install Claude Code | Medium | `client/scripts/install.sh` (modify) |
-| H1-5 | Env template Anthropic vars | Trivial | `client/config/env.template` (modify) |
-| H2-1 | check-compatibility.sh | Medium | `client/scripts/check-compatibility.sh` (create) |
-| H2-2 | pin-versions.sh | Medium | `client/scripts/pin-versions.sh` (create) |
-| H2-3 | downgrade-claude.sh | Small-medium | `client/scripts/downgrade-claude.sh` (create) |
-| H2-4 | Uninstall v2+ | Small | `client/scripts/uninstall.sh` (modify) |
-| H2-5 | Test v2+ | Medium | `client/scripts/test.sh` (modify) |
-| H2-6 | Client SCRIPTS.md spec update | Small | `client/specs/SCRIPTS.md` (modify) |
-| H3-1 | Analytics fix + audit | Medium | `loop-with-analytics.sh`, `compare-analytics.sh` (modify) |
-| H3-2 | Hardware testing | Large | None (manual testing) |
-| H3-3 | Server README update | Trivial | `server/README.md` (modify) |
-| H3-4 | Server SETUP.md Anthropic docs | Small | `server/SETUP.md` (modify) |
-| H3-5 | Client SETUP.md v2+ docs | Small | `client/SETUP.md` (modify) |
-| H4-1 | Plan /v1 URL fix | Trivial | `IMPLEMENTATION_PLAN.md` (modify) |
+| Priority | Item | Status | Effort | Files Modified/Created |
+|----------|------|--------|--------|----------------------|
+| H1-1 | README fix | ✅ COMPLETE | Trivial | `client/README.md` (modify) |
+| H1-2 | Server spec update | ✅ COMPLETE | Small | `server/specs/SCRIPTS.md` (modify) |
+| H1-3 | Server /v1/messages tests | ⬜ TODO | Medium | `server/scripts/test.sh` (modify) |
+| H1-4 | Install Claude Code | ⬜ TODO | Medium | `client/scripts/install.sh` (modify) |
+| H1-5 | Env template Anthropic vars | ✅ COMPLETE | Trivial | `client/config/env.template` (modify) |
+| H1-6 | Embedded template sync | ⬜ TODO | Trivial | `client/scripts/install.sh` (modify, bundle with H1-4) |
+| H2-1 | check-compatibility.sh | ⬜ TODO | Medium | `client/scripts/check-compatibility.sh` (create) |
+| H2-2 | pin-versions.sh | ⬜ TODO | Medium | `client/scripts/pin-versions.sh` (create) |
+| H2-3 | downgrade-claude.sh | ⬜ TODO | Small-medium | `client/scripts/downgrade-claude.sh` (create) |
+| H2-4 | Uninstall v2+ | ⬜ TODO | Small | `client/scripts/uninstall.sh` (modify) |
+| H2-5 | Test v2+ | ⬜ TODO | Medium | `client/scripts/test.sh` (modify) |
+| H2-6 | Client SCRIPTS.md spec update | ✅ COMPLETE | Small | `client/specs/SCRIPTS.md` (modify) |
+| H3-1 | Analytics fix + audit | ⬜ TODO | Medium | `loop-with-analytics.sh`, `compare-analytics.sh` (modify) |
+| H3-2 | Hardware testing | ⬜ TODO | Large | None (manual testing) |
+| H3-3 | Server README update | ⬜ TODO | Trivial | `server/README.md` (modify) |
+| H3-4 | Server SETUP.md Anthropic docs | ✅ COMPLETE | Small | `server/SETUP.md` (modify) |
+| H3-5 | Client SETUP.md v2+ docs | ⬜ TODO | Small | `client/SETUP.md` (modify) |
+| H3-6 | Cache hit rate formula fix | ⬜ TODO | Trivial | `loop-with-analytics.sh` (modify, bundle with H3-1) |
+| H4-1 | Plan /v1 URL fix | ✅ COMPLETE | Trivial | `IMPLEMENTATION_PLAN.md` (modify) |
+| H4-2 | Hostname default mismatch | ⬜ TODO | Trivial | `client/scripts/install.sh` or `client/specs/SCRIPTS.md` (modify) |
+| H4-3 | Analytics readme stale ref | ⬜ TODO | None | Auto-resolved by H2-1 |
+| H4-4 | show_progress unused | ⬜ TODO | Small | `server/scripts/test.sh` (modify, bundle with H1-3) |
 
 **Total new files**: 3 (`check-compatibility.sh`, `pin-versions.sh`, `downgrade-claude.sh`)
-**Total modified files**: 12 (`client/README.md`, `server/specs/SCRIPTS.md`, `server/scripts/test.sh`, `client/scripts/install.sh`, `client/config/env.template`, `client/scripts/uninstall.sh`, `client/scripts/test.sh`, `client/specs/SCRIPTS.md`, `loop-with-analytics.sh`, `compare-analytics.sh`, `server/SETUP.md`, `client/SETUP.md`, `IMPLEMENTATION_PLAN.md`)
-**Total estimated effort**: ~4-6 days of focused development + hardware testing
+**Total modified files**: 13 (`client/README.md`, `server/specs/SCRIPTS.md`, `server/scripts/test.sh`, `client/scripts/install.sh`, `client/config/env.template`, `client/scripts/uninstall.sh`, `client/scripts/test.sh`, `client/specs/SCRIPTS.md`, `loop-with-analytics.sh`, `compare-analytics.sh`, `server/SETUP.md`, `client/SETUP.md`, `IMPLEMENTATION_PLAN.md`)
+**Completed**: 7 items (H1-1, H1-2, H1-5, H2-6, H3-4, H4-1, plus all Phase 0/1 work)
+**Remaining**: 15 items across Phases 2-4
+**Total estimated effort**: ~5-7 days of focused development + hardware testing
 
 ## Implementation Constraints (carried forward from v1)
 
