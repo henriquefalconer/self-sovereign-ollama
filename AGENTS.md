@@ -20,6 +20,7 @@ Do not create separate implementation plans in the server or client directories.
 - Focus on specifications in `server/specs/`
 - Implement server-side scripts in `server/scripts/`
 - Maintain the API contract as documented in `client/specs/API_CONTRACT.md`
+- Support both OpenAI and Anthropic API surfaces (dual API)
 - Update root `IMPLEMENTATION_PLAN.md` for server progress
 - Do not implement any client-specific functionality
 
@@ -27,14 +28,31 @@ Do not create separate implementation plans in the server or client directories.
 - Focus on specifications in `client/specs/`
 - Implement client-side scripts in `client/scripts/`
 - Strictly adhere to the API contract in `client/specs/API_CONTRACT.md`
+- Support both Aider (v1) and Claude Code (v2+) integrations
+- Implement analytics and version management tools
 - Update root `IMPLEMENTATION_PLAN.md` for client progress
 - Do not make assumptions about server internals beyond the API contract
 
 ### API Contract Ownership
-- The server team owns the implementation of the contract
-- The client team owns the consumption of the contract
+- The server team owns the implementation of the contract (both OpenAI and Anthropic APIs)
+- The client team owns the consumption of the contract (both Aider and Claude Code)
 - Changes to `client/specs/API_CONTRACT.md` require coordination between both teams
 - The contract is the single source of truth for the interface between components
+- Dual API support: OpenAI-compatible `/v1/*` and Anthropic-compatible `/v1/messages`
+
+## Component Capabilities (v2+)
+
+### Server Capabilities
+- **OpenAI API** (v1) - For Aider and OpenAI-compatible tools
+- **Anthropic API** (v2+) - For Claude Code and Anthropic-compatible tools
+- Both APIs served by same Ollama process on port 11434
+- No additional configuration required (built into Ollama 0.5.0+)
+
+### Client Capabilities
+- **Aider integration** (v1) - OpenAI-compatible, always uses remote Ollama
+- **Claude Code integration** (v2+) - Anthropic-compatible, optional Ollama backend
+- **Analytics infrastructure** (v2+) - Measure performance, make informed decisions
+- **Version management** (v2+) - Compatibility checking, version pinning, rollback
 
 ## References to Components
 

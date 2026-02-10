@@ -9,9 +9,11 @@
 - Comprehensive test script for automated validation of all server functionality
 - Service management via standard launchctl commands (start/stop/restart/status)
 
-## Exposed API
+## Exposed APIs
 
-- OpenAI-compatible HTTP endpoint at `/v1`
+### OpenAI-Compatible API (v1)
+
+- HTTP endpoint at `/v1`
 - Primary route: `/v1/chat/completions`
 - Supports:
   - Streaming (stream: true)
@@ -20,6 +22,26 @@
   - Tool / function calling (when underlying model implements it)
   - System, user, assistant message roles
 - Model selection via `model` parameter (any model available on the server)
+- **Primary clients**: Aider, Continue, OpenAI SDKs with custom base_url
+
+### Anthropic-Compatible API (v2+)
+
+- HTTP endpoint at `/v1/messages`
+- Anthropic Messages API compatibility layer
+- Supports:
+  - Messages with text and image content (base64)
+  - Streaming via Server-Sent Events (SSE)
+  - System prompts
+  - Multi-turn conversations
+  - Tool use (function calling)
+  - Thinking blocks
+- Limitations:
+  - No `tool_choice` parameter
+  - No prompt caching
+  - No PDF/document support
+  - Image URLs not supported (base64 only)
+- Model selection via `model` parameter (same models as OpenAI API)
+- **Primary clients**: Claude Code, Anthropic SDKs with custom base_url
 
 ## Server Behavior Requirements
 

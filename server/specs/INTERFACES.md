@@ -1,12 +1,53 @@
 # remote-ollama ai-server External Interfaces
 
-## Primary Interface
+## Dual API Surface
+
+Ollama server exposes two distinct API compatibility layers on the same port (11434):
+
+1. **OpenAI-Compatible API** - For Aider, Continue, and OpenAI-compatible tools
+2. **Anthropic-Compatible API** - For Claude Code and Anthropic-compatible tools
+
+Both served by the same Ollama process with no additional configuration required.
+
+---
+
+## OpenAI-Compatible API (v1)
 
 - HTTP API at `http://<tailscale-assigned-ip>:11434/v1`
 - Fully OpenAI-compatible schema (chat completions endpoint)
 - No custom routes or extensions in v1
 
+**Primary endpoints**:
+- `GET /v1/models` - List available models
+- `GET /v1/models/{model}` - Get model details
+- `POST /v1/chat/completions` - Chat completion requests (streaming & non-streaming)
+- `POST /v1/responses` - Experimental non-stateful responses endpoint (Ollama 0.5.0+)
+
 **Note**: Ollama also serves native endpoints at `/api/*` (e.g., `/api/show`, `/api/tags`) which are not part of the documented API contract but may be used by Ollama-aware clients for metadata operations. The guaranteed contract for clients is the OpenAI-compatible `/v1/*` endpoints only (see `../client/specs/API_CONTRACT.md`).
+
+---
+
+## Anthropic-Compatible API (v2+)
+
+- HTTP API at `http://<tailscale-assigned-ip>:11434/v1/messages`
+- Anthropic Messages API compatibility layer
+- Experimental feature (Ollama 0.5.0+)
+
+**Primary endpoint**:
+- `POST /v1/messages` - Anthropic-style message creation
+
+**Supported features**:
+- ✅ Messages with text and image content (base64 only)
+- ✅ Streaming via Server-Sent Events (SSE)
+- ✅ System prompts
+- ✅ Multi-turn conversations
+- ✅ Tool use (function calling)
+- ✅ Thinking blocks
+- ❌ `tool_choice` parameter (not supported)
+- ❌ Prompt caching (not supported)
+- ❌ PDF/document support (not supported)
+
+**See `ANTHROPIC_COMPATIBILITY.md` for complete specification.**
 
 ## Configuration Interface
 

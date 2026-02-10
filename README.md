@@ -20,14 +20,16 @@ The remote-ollama project provides a complete solution for running Ollama on you
 
 ### Server (ai-server)
 - Runs Ollama on a dedicated Apple Silicon Mac with high unified memory
-- Exposes OpenAI-compatible `/v1` API endpoints via Ollama
+- Exposes dual API: OpenAI-compatible `/v1` and Anthropic-compatible `/v1/messages` endpoints
 - Accessible only via secure overlay network (Tailscale)
 - 24/7 operation for on-demand inference
+- Supports both Aider (OpenAI API) and Claude Code (Anthropic API)
 
 ### Client (ai-client)
 - macOS environment setup and configuration
 - Connects to remote Ollama server via Tailscale
-- Configures tools like Aider to use remote Ollama automatically
+- Configures tools (Aider, optionally Claude Code) to use remote Ollama automatically
+- Optional: Claude Code can use either Anthropic cloud API or remote Ollama backend
 - Zero manual configuration per session
 
 ## Quick Start
@@ -38,11 +40,25 @@ See [server/README.md](server/README.md) for detailed server installation and co
 ### Client Setup
 See [client/README.md](client/README.md) for client installation and usage.
 
+## Supported Tools
+
+### Aider (v1)
+- Uses OpenAI-compatible API (`/v1/chat/completions`)
+- Connects to remote Ollama automatically after installation
+- Zero configuration per session
+
+### Claude Code (v2+)
+- **Default**: Uses Anthropic cloud API (Opus 4.6, Sonnet 4.5)
+- **Optional**: Can use local Ollama via Anthropic-compatible API (`/v1/messages`)
+- Optional backend switching via shell alias
+- Version compatibility checking and management tools included
+
 ## Network Architecture
 
 - **No public internet exposure** – All access via Tailscale private network
 - **Device-level authorization** – Tailscale ACLs control access
-- **OpenAI-compatible** – Ollama's `/v1` endpoints work with any tool supporting custom OpenAI base URLs
+- **Dual API support** – OpenAI-compatible `/v1/*` and Anthropic-compatible `/v1/messages`
+- Works with any tool supporting custom OpenAI or Anthropic base URLs
 
 ## Requirements
 
@@ -60,10 +76,40 @@ See [client/README.md](client/README.md) for client installation and usage.
 
 ## Documentation
 
-- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) – Implementation roadmap
-- [AGENTS.md](AGENTS.md) – Agent roles and responsibilities
-- [server/SETUP.md](server/SETUP.md) – Server setup instructions
-- [client/SETUP.md](client/SETUP.md) – Client setup instructions
+### Setup Guides
+- [server/README.md](server/README.md) – Server overview and quick reference
+- [server/SETUP.md](server/SETUP.md) – Server installation instructions
+- [client/README.md](client/README.md) – Client overview and quick reference
+- [client/SETUP.md](client/SETUP.md) – Client installation instructions
+
+### Specifications
+- **Client specs**: `client/specs/` – Client architecture, API contract, Claude Code integration, analytics, version management
+- **Server specs**: `server/specs/` – Server architecture, dual API support, Anthropic compatibility
+
+### Project Management
+- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) – Implementation status and roadmap
+- [AGENTS.md](AGENTS.md) – Component responsibilities and coordination
+
+## Optional Features (v2+)
+
+### Claude Code with Remote Ollama Backend
+- Alternative to Anthropic cloud API for privacy-critical work
+- Shell alias for easy backend switching (`claude-ollama`)
+- All inference stays on private Tailscale network
+- Suitable for simple tasks, file operations, quick edits
+- **Not recommended** for complex autonomous workflows (no prompt caching, lower model quality)
+
+### Performance Analytics
+- Measure actual tool usage and token consumption
+- Compare performance between cloud and local backends
+- Make informed decisions about backend suitability
+- Tools: `loop-with-analytics.sh`, `compare-analytics.sh`
+
+### Version Management
+- Compatibility checking between Claude Code and Ollama versions
+- Version pinning for stable production environments
+- Quick rollback if updates break compatibility
+- Tools: `check-compatibility.sh`, `pin-versions.sh`, `downgrade-claude.sh`
 
 ## Security Model
 

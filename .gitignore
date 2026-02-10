@@ -3,3 +3,8 @@
 
 # Agent
 .agent_complete
+
+# Analytics
+analytics/
+claude-code-headless.json
+limitations-analysis.md

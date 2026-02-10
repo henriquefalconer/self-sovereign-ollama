@@ -5,7 +5,8 @@ Ollama server configuration for secure remote access from Apple Silicon Macs wit
 ## Overview
 
 The remote-ollama ai-server configures Ollama to provide secure, remote LLM inference with:
-- Exposes Ollama's native OpenAI-compatible `/v1` endpoints
+- **Dual API support**: OpenAI-compatible `/v1/*` and Anthropic-compatible `/v1/messages` endpoints
+- Supports both Aider (OpenAI API) and Claude Code (Anthropic API)
 - Runs exclusively on a dedicated, always-on Mac
 - Zero public internet exposure
 - Tailscale for secure remote access
@@ -48,17 +49,42 @@ Key principles:
 
 ## API
 
-Ollama exposes OpenAI-compatible endpoints at:
+Ollama exposes dual API surfaces at:
 ```
-http://<tailscale-assigned-ip>:11434/v1
+http://<tailscale-assigned-ip>:11434
 ```
 
-Supported endpoints:
-- `/v1/chat/completions` (streaming, JSON mode, tool calling)
-- `/v1/models` (list available models)
-- `/v1/responses`
+### OpenAI-Compatible API (v1)
 
-Full API contract is documented in [../client/specs/API_CONTRACT.md](../client/specs/API_CONTRACT.md).
+For Aider and OpenAI-compatible tools:
+
+**Endpoints**:
+- `/v1/chat/completions` - Streaming, JSON mode, tool calling
+- `/v1/models` - List available models
+- `/v1/models/{model}` - Get model details
+- `/v1/responses` - Experimental non-stateful endpoint (Ollama 0.5.0+)
+
+### Anthropic-Compatible API (v2+)
+
+For Claude Code and Anthropic-compatible tools:
+
+**Endpoint**:
+- `/v1/messages` - Anthropic Messages API compatibility (Ollama 0.5.0+)
+
+**Supported**:
+- Messages, streaming, system prompts, multi-turn conversations
+- Vision (base64 images), tool use, thinking blocks
+
+**Limitations**:
+- No `tool_choice` parameter
+- No prompt caching (major performance impact)
+- No PDF support, no URL-based images
+
+See [specs/ANTHROPIC_COMPATIBILITY.md](specs/ANTHROPIC_COMPATIBILITY.md) for complete specification.
+
+### API Contract
+
+Full API contract documented in [../client/specs/API_CONTRACT.md](../client/specs/API_CONTRACT.md).
 
 ## Setup
 
