@@ -7,6 +7,8 @@ server/
 │   ├── FUNCTIONALITIES.md
 │   ├── SECURITY.md
 │   ├── INTERFACES.md
+│   ├── REQUIREMENTS.md
+│   ├── SCRIPTS.md
 │   └── FILES.md
 ├── scripts/
 │   ├── install.sh             # One-time setup script for server machine

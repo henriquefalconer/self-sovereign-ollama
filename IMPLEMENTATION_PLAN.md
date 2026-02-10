@@ -8,6 +8,7 @@
 All core implementation priorities have been completed and validated:
 
 - ✅ All 5 implementation priorities complete: env.template, server install.sh, client install.sh, client uninstall.sh, warm-models.sh
+- ✅ Spec documentation complete: server now has REQUIREMENTS.md and SCRIPTS.md for parity with client; shell profile modification documented in client specs
 - ✅ All scripts syntax-checked and tested for bash compliance (set -euo pipefail, no undefined variables)
 - ✅ Executable permissions set on all scripts (755)
 - ✅ Documentation cross-links verified across all spec files, READMEs, and SETUP.md
@@ -22,7 +23,7 @@ Prioritized task list for achieving full spec implementation of both server and 
 
 ## Current Status
 
-- **Specifications**: COMPLETE (5 server + 6 client = 11 spec files)
+- **Specifications**: COMPLETE (7 server + 6 client = 13 spec files)
 - **Documentation**: COMPLETE (README.md + SETUP.md for both server and client, plus root README)
 - **Server implementation**: COMPLETE (install.sh COMPLETE, warm-models.sh COMPLETE)
 - **Client implementation**: COMPLETE (env.template COMPLETE, scripts COMPLETE)
@@ -128,6 +129,9 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
 **Blocks**: Priority 5 (warm-models.sh), Priority 6 (integration testing)
 
 **Spec refs**:
+- `server/specs/REQUIREMENTS.md` lines 3-13: macOS, Apple Silicon, hardware requirements, prerequisites
+- `server/specs/REQUIREMENTS.md` lines 15-18: no sudo required for operation (LaunchAgent runs as user)
+- `server/specs/SCRIPTS.md` lines 3-23: complete install.sh behavior specification
 - `server/specs/ARCHITECTURE.md` lines 5-11: core principles
 - `server/specs/ARCHITECTURE.md` lines 15-18: hardware requirements (Apple Silicon, high memory)
 - `server/specs/ARCHITECTURE.md` lines 22-25: server responsibilities (bind all interfaces, model management)
@@ -202,7 +206,8 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
 - `client/specs/REQUIREMENTS.md` lines 3-6: macOS 14+, zsh/bash
 - `client/specs/REQUIREMENTS.md` lines 8-12: prerequisites (Homebrew, Python 3.10+, Tailscale)
 - `client/specs/REQUIREMENTS.md` lines 14-16: no sudo required (except Homebrew/Tailscale)
-- `client/specs/FUNCTIONALITIES.md` lines 5-8: one-time installer, env vars, Aider, uninstaller
+- `client/specs/REQUIREMENTS.md` lines 18-22: shell profile modification (with user consent, marker comments for clean removal)
+- `client/specs/FUNCTIONALITIES.md` lines 5-9: one-time installer, env vars, shell profile modification, Aider, uninstaller
 - `client/specs/FUNCTIONALITIES.md` lines 17-19: verify connectivity, clear error messages
 - `client/specs/ARCHITECTURE.md` lines 5-9: responsibilities
 - `client/specs/ARCHITECTURE.md` lines 18-20: no daemon, no wrapper
@@ -308,6 +313,7 @@ This ordering is optimal because: (a) the trivial file is first to unblock downs
 **Blocks**: Priority 6 (integration testing)
 
 **Spec refs**:
+- `server/specs/SCRIPTS.md` lines 25-33: complete warm-models.sh behavior specification
 - `server/specs/FUNCTIONALITIES.md` line 17: pre-warming via optional script
 - `server/specs/FUNCTIONALITIES.md` line 19: keep-alive of frequently used models
 - `server/specs/INTERFACES.md` line 17: optional boot script
@@ -456,7 +462,7 @@ A comprehensive audit of all 11 specification files was performed to validate in
 - **No internal contradictions**: Each spec file is internally consistent with no conflicting requirements
 - **No cross-file contradictions**: All 16 cross-spec dependencies verified; no conflicting requirements between files
 - **All requirements satisfiable**: Current implementation scope can fully satisfy all documented requirements
-- **Minor gaps noted**: Server lacks SCRIPTS.md/REQUIREMENTS.md equivalents (client has both); bash profile support documented in implementation but not originally in specs
+- **Spec documentation parity achieved**: Server now has REQUIREMENTS.md and SCRIPTS.md (matching client structure); shell profile modification explicitly documented in client/specs/FUNCTIONALITIES.md and client/specs/REQUIREMENTS.md
 - **No TODO/FIXME markers**: All spec files are complete for v1 scope with no placeholder sections
 - **Overall assessment**: Specifications are consistent, complete, and ready for implementation
 

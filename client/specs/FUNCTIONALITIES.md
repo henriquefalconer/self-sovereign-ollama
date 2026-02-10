@@ -4,6 +4,7 @@
 
 - One-time installer that makes the private-ai-server API contract immediately usable by OpenAI-compatible tools
 - Sets all required environment variables (see API_CONTRACT.md)
+- Modifies shell profile (`~/.zshrc` or `~/.bashrc`) to source environment file automatically (with user consent)
 - Installs Aider and ensures it reads the contract automatically
 - Uninstaller that removes only client-side changes
 
