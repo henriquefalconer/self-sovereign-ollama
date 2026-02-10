@@ -5,19 +5,19 @@
 
 ## Implementation Status (v0.0.3-dev)
 
-Re-audited 2026-02-10 (fourth pass) with exhaustive line-by-line spec-vs-implementation comparison using parallel Opus/Sonnet subagents. All 35 previously identified gaps re-confirmed. **16 additional gaps** found across all scripts. Total: **51 spec compliance gaps**. **30 gaps fixed** as of 2026-02-10. Remaining: **21 spec compliance gaps**.
+Re-audited 2026-02-10 (fourth pass) with exhaustive line-by-line spec-vs-implementation comparison using parallel Opus/Sonnet subagents. All 35 previously identified gaps re-confirmed. **16 additional gaps** found across all scripts. Total: **51 spec compliance gaps**. **31 gaps fixed** as of 2026-02-10. Remaining: **20 spec compliance gaps**.
 
 - ✅ 8 of 8 spec-required scripts exist: env.template, server install.sh, server uninstall.sh, server test.sh, client install.sh, client uninstall.sh, client test.sh, warm-models.sh
 - ✅ Spec documentation complete: 7 server + 6 client = 13 spec files, all internally consistent
 - ✅ No TODO/FIXME/HACK/placeholder markers in any source files
 - ✅ `client/config/env.template` — fully compliant (all 4 vars, `export`, `__HOSTNAME__` placeholder, `AIDER_MODEL` commented)
-- ✅ `server/scripts/install.sh` — near-fully compliant (1 minor gap: no shell validation, see F7.3)
+- ✅ `server/scripts/install.sh` — COMPLETE (all gaps fixed: F7.3)
 - ✅ `server/scripts/uninstall.sh` — COMPLETE (all 3 gaps confirmed as already compliant)
 - ✅ `client/scripts/install.sh` — COMPLETE (all 11 gaps fixed: F1.1-F1.11)
 - ✅ `client/scripts/uninstall.sh` — COMPLETE (all 6 gaps fixed: F6.1-F6.6)
 - ✅ `client/scripts/test.sh` — 5 gaps fixed (F2.1-F2.3, F2.8, F2.14-F2.15)
 - ✅ `server/scripts/test.sh` — 4 gaps fixed (F3.1-F3.3, F3.6)
-- ⚠️ **21 spec compliance gaps remaining** (see Priority F below for full list)
+- ⚠️ **20 spec compliance gaps remaining** (see Priority F below for full list)
 - ⏳ **2 documentation polish tasks** blocked until hardware testing complete
 
 # Implementation Plan
@@ -28,14 +28,14 @@ Prioritized task list for achieving full spec implementation of both server and 
 
 - **Specifications**: COMPLETE (7 server + 6 client = 13 spec files, all internally consistent)
 - **Documentation**: COMPLETE (README.md + SETUP.md for both server and client, plus root README, includes service management)
-- **Server implementation**: install.sh COMPLETE (1 minor cross-cutting UX gap in F7.3), uninstall.sh ✅ COMPLETE, warm-models.sh HAS GAPS (3), test.sh HAS GAPS (5, down from 9)
+- **Server implementation**: install.sh ✅ COMPLETE, uninstall.sh ✅ COMPLETE, warm-models.sh HAS GAPS (3), test.sh HAS GAPS (5, down from 9)
 - **Client implementation**: env.template COMPLETE, install.sh ✅ COMPLETE (all 11 gaps fixed), uninstall.sh ✅ COMPLETE (all 6 gaps fixed), test.sh HAS GAPS (10, down from 15)
 - **UX consistency**: HAS GAPS (4 cross-cutting issues)
 - **Integration testing**: BLOCKED (scripts need gap fixes before hardware testing is meaningful)
 
 ## Remaining Work (Priority Order)
 
-Items sorted by priority -- implement in this order to achieve full spec compliance. Priorities A-D are COMPLETE. **Priority F (21 spec compliance gaps remaining, 30 fixed) is the current focus.**
+Items sorted by priority -- implement in this order to achieve full spec compliance. Priorities A-D are COMPLETE. **Priority F (20 spec compliance gaps remaining, 31 fixed) is the current focus.**
 
 ### Priority A: server/scripts/uninstall.sh -- ✅ COMPLETE
 - **File**: `server/scripts/uninstall.sh`
@@ -94,9 +94,9 @@ Items sorted by priority -- implement in this order to achieve full spec complia
 - ✅ Add quick-reference card for common operations (start/stop server, switch models, check status)
 - ✅ Add `warm-models.sh` documentation to `server/README.md` and `server/SETUP.md` (script exists in `server/scripts/warm-models.sh` and is spec'd in `server/specs/SCRIPTS.md` lines 25-33 and `server/specs/FILES.md` line 16, but neither user-facing doc mentions it)
 
-### Priority F: Spec Compliance Gaps (21 items remaining) -- UPDATED
+### Priority F: Spec Compliance Gaps (20 items remaining) -- UPDATED
 
-Deep audit (2026-02-10, v4) comparing every spec requirement line-by-line against implementation using parallel Opus/Sonnet subagents. All 35 previously identified gaps re-confirmed; **16 additional gaps** found across all scripts. **30 gaps fixed** as of 2026-02-10. Grouped by script, sorted by priority within each group. Spec line numbers reference the requirement; implementation line numbers reference the current code.
+Deep audit (2026-02-10, v4) comparing every spec requirement line-by-line against implementation using parallel Opus/Sonnet subagents. All 35 previously identified gaps re-confirmed; **16 additional gaps** found across all scripts. **31 gaps fixed** as of 2026-02-10. Grouped by script, sorted by priority within each group. Spec line numbers reference the requirement; implementation line numbers reference the current code.
 
 #### F1. client/scripts/install.sh -- ✅ ALL 11 gaps FIXED
 
@@ -318,7 +318,7 @@ Deep audit (2026-02-10, v4) comparing every spec requirement line-by-line agains
   - Spec: `client/specs/SCRIPTS.md` line 58 — "Graceful degradation: continue with remaining cleanup even if some steps fail"
   - Fix applied: Tracks failures in REMOVAL_FAILURES array and displays in summary if any failures occurred
 
-#### F7. UX Consistency Across All Scripts -- 4 cross-cutting gaps
+#### F7. UX Consistency Across All Scripts -- 3 cross-cutting gaps remaining (1 gap FIXED)
 
 These are patterns where the specs require "consistent standards" but scripts differ:
 
@@ -330,10 +330,9 @@ These are patterns where the specs require "consistent standards" but scripts di
   - Only `server/scripts/install.sh` has `section_break()` and `important_section()` functions with box-drawing characters; other scripts use plain `===` lines
   - Fix: Either standardize on box-drawing characters for all scripts or standardize on simple `===` separators
 
-- [ ] **F7.3 — server/scripts/install.sh does not validate user shell is zsh or bash** (LOW)
+- ✅ **F7.3 — server/scripts/install.sh does not validate user shell is zsh or bash** (LOW) — FIXED
   - Spec: `server/specs/REQUIREMENTS.md` line 7 — "zsh (default) or bash" listed as system requirement
-  - Implementation: Client install.sh validates shell at lines 58-68, but server install.sh does not check
-  - Fix: Add shell validation matching client install.sh pattern
+  - Fix applied: Added shell validation matching client install.sh pattern
 
 - [ ] **F7.4 — warm-models.sh banner missing "private-ai-server" prefix** (LOW)
   - All other scripts use "private-ai-server" or "private-ai-client" prefix in their banners
@@ -854,11 +853,11 @@ A comprehensive audit of all 13 specification files was performed to validate in
 - **All requirements satisfiable**: Current implementation scope can fully satisfy all documented requirements
 - **No TODO/FIXME markers**: All spec files and implementation scripts are complete for v1 scope with no placeholder sections
 
-### Implementation-vs-spec audit (updated 2026-02-10, v4.2)
-Every implemented script was compared line-by-line against its spec requirements using parallel Opus/Sonnet subagents. Fourth audit pass; all 35 previously identified gaps re-confirmed, 16 additional gaps found across all scripts. Total: 51 gaps. **30 gaps fixed as of 2026-02-10. Remaining: 21 gaps.**
+### Implementation-vs-spec audit (updated 2026-02-10, v4.3)
+Every implemented script was compared line-by-line against its spec requirements using parallel Opus/Sonnet subagents. Fourth audit pass; all 35 previously identified gaps re-confirmed, 16 additional gaps found across all scripts. Total: 51 gaps. **31 gaps fixed as of 2026-02-10. Remaining: 20 gaps.**
 
 - **client/config/env.template**: ✅ COMPLETE. All 4 variables present and correct, `export` used, `AIDER_MODEL` commented out, `__HOSTNAME__` placeholder correct
-- **server/scripts/install.sh**: ✅ Near-fully compliant. 1 minor gap: no shell validation (F7.3). All core functionality and UX requirements met.
+- **server/scripts/install.sh**: ✅ COMPLETE. All gaps fixed including shell validation (F7.3)
 - **server/scripts/uninstall.sh**: ✅ COMPLETE. All 3 gaps confirmed as already compliant: error/warning tracking works (F5.1), `set -euo pipefail` compatible with graceful handling (F5.2), purpose clear from output (F5.3)
 - **server/scripts/warm-models.sh**: ⚠️ Core functionality complete. 3 gaps: `ollama pull` progress suppressed (F4.1), message format differs from spec (F4.2), no time estimates (F4.3)
 - **server/scripts/test.sh**: ⚠️ All 20 tests implemented. ✅ 4 gaps fixed (F3.1-F3.3, F3.6). 5 gaps remaining: verbose mode incomplete (F3.4), include_usage test doesn't verify usage (F3.5), skipped tests lack enablement guidance (F3.7), summary not boxed (F3.8), no next-steps section (F3.9)
