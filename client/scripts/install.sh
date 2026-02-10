@@ -316,6 +316,11 @@ export OLLAMA_API_BASE=http://__HOSTNAME__:11434
 export OPENAI_API_BASE=http://__HOSTNAME__:11434/v1
 export OPENAI_API_KEY=ollama
 # export AIDER_MODEL=ollama/<model-name>
+
+# Claude Code + Ollama (v2+, optional, uncomment if using claude-ollama alias)
+# export ANTHROPIC_AUTH_TOKEN=ollama
+# export ANTHROPIC_API_KEY=""
+# export ANTHROPIC_BASE_URL=http://__HOSTNAME__:11434
 TEMPLATE_EOF
 )
 else
@@ -462,7 +467,66 @@ else
     fi
 fi
 
-# Step 12: Copy uninstall.sh for curl-pipe users
+# Step 12: Optional Claude Code + Ollama integration (v2+)
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Optional: Claude Code + Ollama Integration (v2+)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "You can use Claude Code with your local Ollama server."
+echo ""
+echo "Benefits:"
+echo "  • Privacy: All inference stays on your network"
+echo "  • Cost: No API charges"
+echo "  • Speed: Low latency to local server"
+echo ""
+echo "Limitations:"
+echo "  • Model quality lower than real Claude"
+echo "  • No prompt caching (slower on repeated contexts)"
+echo "  • Best for: Simple tasks, file reads, quick edits"
+echo ""
+echo "Note: This only creates a 'claude-ollama' shell alias."
+echo "      Claude Code must already be installed separately."
+echo ""
+prompt "Create 'claude-ollama' shell alias? (y/N):"
+read -r CLAUDE_CONSENT < /dev/tty
+
+if [[ "$CLAUDE_CONSENT" =~ ^[Yy]$ ]]; then
+    info "Adding claude-ollama alias to $SHELL_PROFILE..."
+
+    # Marker pattern for the Claude Code alias
+    CLAUDE_MARKER_START="# >>> claude-ollama >>>"
+    CLAUDE_MARKER_END="# <<< claude-ollama <<<"
+
+    # Check if Claude alias markers already exist
+    if grep -q "$CLAUDE_MARKER_START" "$SHELL_PROFILE" 2>/dev/null; then
+        info "Claude Code alias already configured (markers found), skipping"
+    else
+        # Append alias with markers
+        cat >> "$SHELL_PROFILE" <<CLAUDE_PROFILE_EOF
+
+$CLAUDE_MARKER_START
+# Claude Code with local Ollama backend
+alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://$SERVER_HOSTNAME:11434 claude --dangerously-skip-permissions'
+$CLAUDE_MARKER_END
+CLAUDE_PROFILE_EOF
+
+        success "Added claude-ollama alias to shell profile"
+
+        echo ""
+        info "To use Claude Code with Ollama:"
+        echo "  • Open a new terminal (or run: source $SHELL_PROFILE)"
+        echo "  • Run: claude-ollama"
+        echo ""
+        info "To use Claude Code with Anthropic cloud (recommended for quality):"
+        echo "  • Run: claude"
+        echo ""
+    fi
+else
+    info "Skipping Claude Code alias (you can use standard 'claude' with Anthropic cloud)"
+fi
+
+# Step 13: Copy uninstall.sh for curl-pipe users
 UNINSTALL_SCRIPT="$CLIENT_DIR/uninstall.sh"
 
 # Detect if we have local uninstall.sh
@@ -483,7 +547,7 @@ fi
 
 section_break "Connectivity Test"
 
-# Step 13: Run connectivity test
+# Step 14: Run connectivity test
 TEST_URL="http://$SERVER_HOSTNAME:11434/v1/models"
 SERVER_REACHABLE=false
 if curl -sf --max-time 5 "$TEST_URL" &> /dev/null; then

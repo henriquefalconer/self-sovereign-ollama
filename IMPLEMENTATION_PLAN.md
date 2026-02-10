@@ -8,7 +8,7 @@
 **Last Updated**: 2026-02-10
 **Current Version**: v0.0.4
 
-v1 (Aider/OpenAI API) is complete and tested on hardware. v2+ (Claude Code/Anthropic API, version management, analytics) has documentation foundations done; core implementation in progress. Latest: server Anthropic tests + progress tracking implemented.
+v1 (Aider/OpenAI API) is complete and tested on hardware. v2+ (Claude Code/Anthropic API, version management, analytics) has documentation foundations done; core implementation in progress. Latest: server Anthropic tests + progress tracking implemented; client Claude Code installation with optional Ollama integration complete.
 
 ---
 
@@ -20,26 +20,22 @@ All 8 scripts delivered (server: 4, client: 3 + env.template). 48 tests passing 
 
 ### v2+ Implementation - IN PROGRESS
 
-Phase 1 (documentation foundations) complete: 7/22 items done. Phase 2: 2/6 items done (H1-3, H4-4). Specs updated for Anthropic API, env.template extended, server Anthropic tests + progress tracking implemented. **13 items remain** across 3 phases of implementation.
+Phase 1 (documentation foundations) complete: 7/22 items done. Phase 2: 4/6 items done (H1-3, H1-4, H1-6, H4-4). Server Anthropic tests, client Claude Code installation, and progress tracking all implemented. **11 items remain** across 3 phases of implementation.
 
 ---
 
 ## Remaining Tasks
 
-### Phase 2: Core Implementation (4 items remaining, parallelizable)
+### Phase 2: Core Implementation (2 items remaining, parallelizable)
 
 | ID | Task | Priority | Effort | Target Files | Dependencies |
 |----|------|----------|--------|-------------|-------------|
-| H1-4 | Add optional Claude Code setup to client install.sh. Prompt user, create `claude-ollama` shell alias with marker comments for clean removal. | H1 | Medium | `client/scripts/install.sh` | None (H1-5 env done) |
-| H1-6 | Sync embedded env template in install.sh (lines 311-319) with canonical `env.template` -- add missing Anthropic variable comments (lines 9-12 of template). | H1 | Trivial | `client/scripts/install.sh` | None |
 | H2-1 | Create `check-compatibility.sh`. Detect Claude Code + Ollama versions, check compatibility matrix, report status with exit codes 0/1/2/3. | H2 | Medium | New: `client/scripts/check-compatibility.sh` | None |
 | H2-2 | Create `pin-versions.sh`. Detect versions, pin via npm/brew, create `~/.ai-client/.version-lock`. | H2 | Medium | New: `client/scripts/pin-versions.sh` | None |
 
-**Bundling**: H1-4 + H1-6 (same file).
-
 **Specs**: H2-1 -> `client/specs/VERSION_MANAGEMENT.md` lines 66-131. H2-2 -> same spec lines 133-178.
 
-**Completed**: H1-3 (Anthropic tests), H4-4 (progress tracking) -- see "Completed This Session" section below.
+**Completed**: H1-3 (Anthropic tests), H1-4 (Claude Code install), H1-6 (env template sync), H4-4 (progress tracking) -- see "Completed This Session" section below.
 
 ### Phase 3: Dependent Implementation (3 items, sequential)
 
@@ -70,43 +66,40 @@ Phase 1 (documentation foundations) complete: 7/22 items done. Phase 2: 2/6 item
 
 ```
 Phase 2 (parallelizable):
-  H1-3 + H4-4 ─── no blockers
-  H1-4 + H1-6 ─── no blockers
   H2-1 ─────────── no blockers
   H2-2 ─────────── no blockers
 
 Phase 3 (sequential):
   H2-3 ─────────── depends on H2-2
-  H2-4 ─────────── depends on H1-4
-  H2-5 ─────────── depends on H1-3, H1-4, H2-1, H2-2, H2-3
+  H2-4 ─────────── unblocked (H1-4 complete)
+  H2-5 ─────────── depends on H2-1, H2-2, H2-3 (H1-3, H1-4 complete)
 
 Phase 4 (polish):
   H3-1 + H3-6 ─── no blockers (can start anytime)
   H3-2 ─────────── depends on ALL Phase 2 + Phase 3
-  H3-3 ─────────── depends on H1-3, H3-2
-  H3-5 ─────────── depends on H1-4, H2-1, H2-2, H2-3
+  H3-3 ─────────── unblocked for H1-3, needs H3-2
+  H3-5 ─────────── unblocked for H1-4, needs H2-1, H2-2, H2-3
   H4-3 ─────────── auto-resolved by H2-1
 ```
 
 ## Recommended Execution Order
 
 **Batch 1** (parallel, no blockers):
-1. H1-4 + H1-6 -- Client Claude Code install + template sync
-2. H2-1 -- check-compatibility.sh
-3. H2-2 -- pin-versions.sh
-4. H3-1 + H3-6 -- Analytics bug fixes + decision matrix
+1. H2-1 -- check-compatibility.sh
+2. H2-2 -- pin-versions.sh
+3. H3-1 + H3-6 -- Analytics bug fixes + decision matrix
 
 **Batch 2** (after Batch 1):
-6. H2-3 -- downgrade-claude.sh (needs H2-2)
-7. H2-4 -- Uninstall v2+ cleanup (needs H1-4)
+4. H2-3 -- downgrade-claude.sh (needs H2-2)
+5. H2-4 -- Uninstall v2+ cleanup (H1-4 complete, unblocked)
 
 **Batch 3** (after Batch 2):
-8. H2-5 -- Client v2+ tests (needs all scripts to exist)
+6. H2-5 -- Client v2+ tests (needs all scripts to exist)
 
 **Batch 4** (after Batch 3):
-9. H3-2 -- Hardware testing
-10. H3-3 -- Server README update
-11. H3-5 -- Client SETUP update
+7. H3-2 -- Hardware testing
+8. H3-3 -- Server README update
+9. H3-5 -- Client SETUP update
 
 ---
 
@@ -115,7 +108,7 @@ Phase 4 (polish):
 | Category | Items | Effort |
 |----------|-------|--------|
 | ~~Server test.sh (Anthropic tests + progress fix)~~ | ~~H1-3, H4-4~~ | ~~DONE~~ |
-| Client install.sh (Claude Code + template sync) | H1-4, H1-6 | Medium |
+| ~~Client install.sh (Claude Code + template sync)~~ | ~~H1-4, H1-6~~ | ~~DONE~~ |
 | Version management (3 new scripts) | H2-1, H2-2, H2-3 | Medium-Large |
 | Client uninstall.sh (v2+ cleanup) | H2-4 | Small |
 | Client test.sh (v2+ tests) | H2-5 | Medium |
@@ -124,8 +117,8 @@ Phase 4 (polish):
 | Documentation updates | H3-3, H3-5 | Small |
 
 **New files**: 3 (`check-compatibility.sh`, `pin-versions.sh`, `downgrade-claude.sh`)
-**Modified files**: ~7 existing files
-**Estimated total**: 4-6 focused development days + hardware testing session
+**Modified files**: ~5 existing files (2 already done)
+**Estimated total**: 3-5 focused development days + hardware testing session
 
 ---
 
@@ -162,7 +155,26 @@ Phase 4 (polish):
 - `CURRENT_TEST` now increments properly for all tests (1/26 → 26/26)
 - Progress bar now displays correctly throughout test execution
 
-**Impact**: Server test suite now comprehensively validates both OpenAI (20 tests) and Anthropic (6 tests) API surfaces with proper progress tracking.
+### H1-4: Optional Claude Code Setup
+**File**: `client/scripts/install.sh`
+- Added Step 12: Optional Claude Code + Ollama integration section (after Aider installation)
+- User consent prompt with clear messaging about benefits (offline, faster) and limitations (no prompt caching)
+- Defaults to "No" to avoid unintended Anthropic API interference
+- Creates `claude-ollama` shell alias using marker comments (`# >>> claude-ollama >>>` / `# <<< claude-ollama <<<`)
+- Idempotent: checks for existing markers before adding alias
+- Fixed step numbering (Step 13 → Step 14 for connectivity test)
+- Fully compliant with `client/specs/CLAUDE_CODE.md` lines 171-284
+
+### H1-6: Env Template Sync
+**File**: `client/scripts/install.sh`
+- Synced embedded env template (lines 311-323) with canonical `client/config/env.template`
+- Added missing Anthropic variable comments:
+  - `ANTHROPIC_AUTH_TOKEN` (line 9 of template)
+  - `ANTHROPIC_API_KEY` (line 10)
+  - `ANTHROPIC_BASE_URL` (line 11-12 with Ollama example)
+- Ensures install.sh accurately reflects all supported environment variables
+
+**Impact**: Client installation now supports optional Claude Code integration with proper user consent, clear messaging, idempotent alias creation, and accurate env template documentation. Server test suite comprehensively validates both OpenAI and Anthropic API surfaces with proper progress tracking.
 
 ---
 
