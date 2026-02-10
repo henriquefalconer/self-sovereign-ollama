@@ -7,6 +7,22 @@
 
 Comprehensive audit completed 2026-02-10. Updated 2026-02-10 to reflect completion of all priorities A-D: server uninstall.sh, macOS version check, server test.sh, and client test.sh. All 8 spec-required scripts now complete. Tag 0.0.1 created. Re-audited 2026-02-10: all 194 server spec requirements and all client spec requirements verified against implementation; 0 code gaps found; 1 documentation gap added (warm-models.sh missing from user-facing docs). Updated 2026-02-10: warm-models.sh documentation completed. Quick-reference card completed 2026-02-10.
 
+**UX Improvements (2026-02-10):** server/scripts/install.sh enhanced with user feedback from first-time installation testing:
+- Homebrew noise suppression (HOMEBREW_NO_ENV_HINTS, HOMEBREW_NO_INSTALL_CLEANUP)
+- Dual Tailscale installation (GUI cask + CLI formula for connection detection)
+- Comprehensive first-time setup instructions (permissions, VPN activation, survey/tutorial skip guidance)
+- Interactive connection flow (press Enter when ready, no timeout pressure)
+- Visual improvements (boxed sections, numbered steps, clear hierarchy)
+- Explicit ACL configuration steps (click JSON editor, add tags with step-by-step instructions)
+- Complete workflow guidance (includes client installation reminder in final summary)
+
+**Specs Updated (2026-02-10):** All script specifications updated with comprehensive UX requirements:
+- **server/specs/SCRIPTS.md** - All 4 scripts (install, uninstall, warm-models, test) now include detailed UX sections
+- **server/specs/REQUIREMENTS.md** - Clarified Tailscale dual installation (GUI + CLI)
+- **client/specs/SCRIPTS.md** - All 3 scripts (install, uninstall, test) now include detailed UX sections
+- **UX principles documented**: Color-coded output (echo -e), visual hierarchy (boxed sections), progress tracking, context-specific error messages, graceful degradation, idempotency, final summaries, troubleshooting guidance
+- **Consistent standards**: All scripts should follow same UX patterns for professional, polished user experience
+
 - ✅ 8 of 8 spec-required scripts implemented: env.template, server install.sh, server uninstall.sh, server test.sh, client install.sh, client uninstall.sh, client test.sh, warm-models.sh
 - ✅ Spec documentation complete: 7 server + 6 client = 13 spec files, all internally consistent
 - ✅ Service management documentation: start/stop/restart commands in README and SETUP for server; client clarifies no daemon

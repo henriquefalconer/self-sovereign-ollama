@@ -16,7 +16,7 @@
 ## Prerequisites (installer enforces)
 
 - Homebrew
-- Tailscale (GUI app or CLI; installer opens GUI for login)
+- Tailscale (installer installs both GUI app and CLI tools; GUI used for login/setup, CLI used for connection detection)
 - Ollama (installed via Homebrew if missing)
 
 ## No sudo required for operation

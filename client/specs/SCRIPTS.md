@@ -2,20 +2,61 @@
 
 ## scripts/install.sh
 
-- Checks / installs Homebrew, Python, Tailscale
-- Opens Tailscale app for login + device approval
+### Functionality
+- Validates macOS 14+ (Sonoma or later)
+- Checks / installs Homebrew, Python 3.10+, Tailscale
+- Installs both Tailscale GUI (for user) and CLI (for connection detection)
+- Opens Tailscale app for login + device approval if not already connected
 - Prompts for server hostname (default: private-ai-server)
-- Creates `~/.private-ai-client/env` with exact variables from API_CONTRACT.md
-- Appends `source ~/.private-ai-client/env` to `~/.zshrc` (with user consent)
+- Creates `~/.private-ai-client/` directory
+- Generates `~/.private-ai-client/env` with exact variables from API_CONTRACT.md
+- Prompts for user consent before modifying shell profile
+- Appends `source ~/.private-ai-client/env` to `~/.zshrc` or `~/.bashrc` with marker comments
+- Installs pipx if needed, runs `pipx ensurepath`
 - Installs Aider via pipx (isolated, no global pollution)
-- Runs a connectivity test using the contract
+- Copies uninstall.sh to `~/.private-ai-client/` for curl-pipe users
+- Runs connectivity test (warns but does not abort if server unreachable)
+
+### UX Requirements
+- **Homebrew noise suppression** - Set HOMEBREW_NO_ENV_HINTS and HOMEBREW_NO_INSTALL_CLEANUP
+- **Color-coded output** - Use echo -e with GREEN/YELLOW/RED/BLUE for messages
+- **Clear sections** - Use boxed or visually separated sections for major steps
+- **Progress tracking** - Show what's being installed/configured at each step
+- **Interactive consent** - Always ask before modifying shell profile
+- **Dual-mode support** - Work both as local clone and curl-pipe installation:
+  - Embed env.template content as heredoc fallback
+  - Copy uninstall.sh to `~/.private-ai-client/` for later access
+- **Comprehensive Tailscale guidance** - Similar to server install:
+  - Warn about sudo password prompt
+  - List all permissions (System Extension, Notifications, Start on login)
+  - Mention VPN activation in System Settings if needed
+  - Note survey and tutorial can be skipped
+- **Connectivity test** - Test server connection but only warn (don't fail) if unreachable
+- **Final summary** - Show what was installed and next steps:
+  - Remind to open new terminal or run `exec $SHELL`
+  - Show example Aider command
+  - Display troubleshooting resources
+- **Idempotent** - Safe to re-run without breaking existing setup
 
 ## scripts/uninstall.sh
 
-- Removes Aider
-- Deletes `~/.private-ai-client`
-- Comments out or removes the sourcing line from shell profile
-- Leaves Tailscale and Homebrew untouched
+### Functionality
+- Removes Aider via `pipx uninstall aider-chat`
+- Removes marker-delimited block from shell profile (`~/.zshrc` and `~/.bashrc`)
+- Deletes `~/.private-ai-client/` directory (includes env file and copied uninstall script)
+- Leaves Tailscale, Homebrew, and pipx untouched (user may need them for other tools)
+- Handles edge cases gracefully (Aider not installed, directory missing, profile not modified)
+
+### UX Requirements
+- **Clear banner** - Display script name and purpose at start
+- **Color-coded output** - Use echo -e with GREEN/YELLOW/RED for messages
+- **Progress tracking** - Show what's being removed at each step
+- **Final summary** - Display boxed or clearly separated summary showing:
+  - What was successfully removed
+  - What was left intact (Tailscale, Homebrew, pipx)
+  - Reminder to close/reopen terminal for changes to take effect
+- **Graceful degradation** - Continue with remaining cleanup even if some steps fail
+- **Idempotent** - Safe to re-run on already-cleaned system (no errors on missing components)
 
 ## scripts/test.sh
 
@@ -66,11 +107,30 @@ Comprehensive test script that validates all client functionality. Designed to r
 - Test uninstall.sh on clean system (should not error)
 
 ### Output Format
-- Clear pass/fail for each test
-- Summary count at end (X passed, Y failed, Z skipped)
-- Exit code 0 if all tests pass, non-zero otherwise
-- Verbose mode option (`--verbose` or `-v`) for detailed output
-- Colorized output for readability (green=pass, red=fail, yellow=skip)
+- **Per-test results** - Clear pass/fail/skip for each test with brief description
+- **Summary statistics** - Final count (X passed, Y failed, Z skipped)
+- **Exit codes** - 0 if all tests pass, non-zero otherwise
+- **Verbose mode** - `--verbose` or `-v` flag for detailed output (request/response bodies)
+- **Colorized output** - Use echo -e with color codes:
+  - GREEN for passed tests
+  - RED for failed tests
+  - YELLOW for skipped tests
+- **Progress indication** - Show test number / total (e.g., "Running test 12/27...")
+- **Grouped results** - Organize output by test category (Environment, Dependencies, Connectivity, etc.)
+
+### UX Requirements
+- **Clear banner** - Display script name, purpose, and test count at start
+- **Real-time feedback** - Show results as tests run (don't wait until end)
+- **Minimal noise** - Suppress verbose curl output unless --verbose flag used
+- **Helpful failures** - When test fails, show:
+  - What was expected
+  - What was received
+  - Suggested troubleshooting steps (e.g., "Run install.sh to configure")
+- **Skip guidance** - If tests are skipped, explain why and how to enable them
+- **Final summary box** - Visually separated summary section with:
+  - Overall pass/fail status
+  - Statistics
+  - Next steps if failures occurred (e.g., "Run install.sh", "Check server status")
 
 ### Test Modes
 - `--skip-server` - Skip connectivity tests (for offline testing)
