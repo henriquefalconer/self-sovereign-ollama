@@ -105,6 +105,29 @@ tail -f /tmp/ollama.stdout.log
 tail -f /tmp/ollama.stderr.log
 ```
 
+### Warm Models (Optional Performance Optimization)
+
+The `warm-models.sh` script pre-loads models into memory for faster first-request latency. This is useful for ensuring models are immediately ready after server boot or restart.
+
+```bash
+# Warm a single model
+./scripts/warm-models.sh qwen2.5-coder:32b
+
+# Warm multiple models
+./scripts/warm-models.sh qwen2.5-coder:32b deepseek-r1:70b llama3.2-vision:90b
+```
+
+What it does:
+- Pulls each model (downloads if not already present)
+- Sends a minimal inference request to force-load the model into memory
+- Continues processing remaining models if one fails
+- Provides detailed progress reporting and summary
+
+When to use it:
+- After server restarts or reboots to eliminate cold-start latency
+- Before critical workloads that require immediate response
+- Can be integrated into launchd for automatic warmup at boot (see script comments)
+
 ## Security
 
 See [specs/SECURITY.md](specs/SECURITY.md) for the complete security model.

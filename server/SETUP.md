@@ -170,3 +170,23 @@ ollama list
 # Pull a new model
 ollama pull <model-name>
 ```
+
+### (Optional) Warm Models for Faster First Response
+
+The `warm-models.sh` script eliminates cold-start latency by pre-loading models into memory. This is particularly useful for large models that take significant time to load on first request.
+
+```bash
+# Navigate to server directory if not already there
+cd /path/to/private-ai-api/server
+
+# Warm specific models
+./scripts/warm-models.sh qwen2.5-coder:32b deepseek-r1:70b
+```
+
+The script will:
+1. Verify Ollama is running
+2. Pull each model (if not already downloaded)
+3. Send a minimal inference request to load the model into memory
+4. Report success/failure for each model
+
+This step is optional but recommended if you want immediate response times after server boot or restart. You can also integrate this into launchd for automatic warmup at boot - see the script's inline comments for details.
