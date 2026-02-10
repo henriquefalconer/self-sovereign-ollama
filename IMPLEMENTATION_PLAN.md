@@ -3,9 +3,9 @@
  SPDX-License-Identifier: Proprietary
 -->
 
-## Implementation Status (v0.0.0)
+## Implementation Status (v0.0.1)
 
-Comprehensive audit completed 2026-02-10. Updated 2026-02-10 to reflect completion of server uninstall.sh, macOS version check, server test.sh (Priority C), and client test.sh (Priority D). All spec-required scripts now complete.
+Comprehensive audit completed 2026-02-10. Updated 2026-02-10 to reflect completion of all priorities A-D: server uninstall.sh, macOS version check, server test.sh, and client test.sh. All 8 spec-required scripts now complete. Tag 0.0.1 created.
 
 - ✅ 8 of 8 spec-required scripts implemented: env.template, server install.sh, server uninstall.sh, server test.sh, client install.sh, client uninstall.sh, client test.sh, warm-models.sh
 - ✅ Spec documentation complete: 7 server + 6 client = 13 spec files, all internally consistent
@@ -13,6 +13,7 @@ Comprehensive audit completed 2026-02-10. Updated 2026-02-10 to reflect completi
 - ✅ All implemented scripts syntax-checked for bash compliance (set -euo pipefail, no undefined variables)
 - ✅ No TODO/FIXME/HACK/placeholder markers in any source files
 - ✅ Tag 0.0.0 created marking initial implementation
+- ✅ Tag 0.0.1 created marking completion of all 8 spec-required scripts
 - ✅ **All scripts implemented**: All 8 spec-required scripts complete
 - ✅ **0 spec compliance gaps** (macOS version check completed in server install.sh)
 - ⏳ **3 documentation polish tasks** blocked until hardware testing complete
