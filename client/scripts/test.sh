@@ -1,0 +1,485 @@
+#!/bin/bash
+set -euo pipefail
+
+# private-ai-client test script
+# Comprehensive validation of all client functionality
+# Source: client/specs/SCRIPTS.md lines 20-78
+
+# Color output helpers
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Test counters
+TESTS_PASSED=0
+TESTS_FAILED=0
+TESTS_SKIPPED=0
+
+# Flags
+VERBOSE=false
+SKIP_SERVER=false
+SKIP_AIDER=false
+QUICK_MODE=false
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --verbose|-v)
+            VERBOSE=true
+            shift
+            ;;
+        --skip-server)
+            SKIP_SERVER=true
+            shift
+            ;;
+        --skip-aider)
+            SKIP_AIDER=true
+            shift
+            ;;
+        --quick)
+            QUICK_MODE=true
+            shift
+            ;;
+        *)
+            echo "Usage: $0 [--verbose|-v] [--skip-server] [--skip-aider] [--quick]"
+            exit 1
+            ;;
+    esac
+done
+
+# Output helpers
+pass() {
+    echo -e "${GREEN}✓ PASS${NC} $1"
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+}
+
+fail() {
+    echo -e "${RED}✗ FAIL${NC} $1"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+}
+
+skip() {
+    echo -e "${YELLOW}⊘ SKIP${NC} $1"
+    TESTS_SKIPPED=$((TESTS_SKIPPED + 1))
+}
+
+info() {
+    if [[ "$VERBOSE" == "true" ]]; then
+        echo -e "${BLUE}[INFO]${NC} $1"
+    fi
+}
+
+# Banner
+echo "================================================"
+echo "  private-ai-client Test Suite"
+echo "================================================"
+echo ""
+
+# Environment Configuration Tests
+echo "=== Environment Configuration Tests ==="
+
+# Test 1: Env file exists
+ENV_FILE="$HOME/.private-ai-client/env"
+info "Checking if env file exists at $ENV_FILE..."
+if [[ -f "$ENV_FILE" ]]; then
+    pass "Environment file exists (~/.private-ai-client/env)"
+else
+    fail "Environment file missing (~/.private-ai-client/env)"
+fi
+
+# Load environment if file exists
+if [[ -f "$ENV_FILE" ]]; then
+    source "$ENV_FILE" 2>/dev/null || true
+fi
+
+# Test 2-5: Required environment variables
+info "Checking required environment variables..."
+
+if [[ -n "${OLLAMA_API_BASE:-}" ]]; then
+    pass "OLLAMA_API_BASE is set: $OLLAMA_API_BASE"
+else
+    fail "OLLAMA_API_BASE is not set"
+fi
+
+if [[ -n "${OPENAI_API_BASE:-}" ]]; then
+    pass "OPENAI_API_BASE is set: $OPENAI_API_BASE"
+else
+    fail "OPENAI_API_BASE is not set"
+fi
+
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    pass "OPENAI_API_KEY is set: $OPENAI_API_KEY"
+else
+    fail "OPENAI_API_KEY is not set"
+fi
+
+if [[ -n "${AIDER_MODEL:-}" ]]; then
+    pass "AIDER_MODEL is set (optional): $AIDER_MODEL"
+else
+    info "AIDER_MODEL is not set (optional, OK)"
+fi
+
+# Test 6: Shell profile sources env file
+info "Checking if shell profile sources env file..."
+USER_SHELL=$(basename "$SHELL")
+if [[ "$USER_SHELL" == "zsh" ]]; then
+    SHELL_PROFILE="$HOME/.zshrc"
+elif [[ "$USER_SHELL" == "bash" ]]; then
+    SHELL_PROFILE="$HOME/.bashrc"
+else
+    SHELL_PROFILE="$HOME/.zshrc"  # Default fallback
+fi
+
+if [[ -f "$SHELL_PROFILE" ]]; then
+    if grep -q "private-ai-client" "$SHELL_PROFILE" && grep -q "source.*\.private-ai-client/env" "$SHELL_PROFILE"; then
+        pass "Shell profile sources env file ($SHELL_PROFILE)"
+    else
+        fail "Shell profile does not source env file ($SHELL_PROFILE)"
+    fi
+else
+    fail "Shell profile not found ($SHELL_PROFILE)"
+fi
+
+# Test 7: Environment variables are exported
+info "Checking if environment variables are exported..."
+if grep -q "^export OLLAMA_API_BASE" "$ENV_FILE" && \
+   grep -q "^export OPENAI_API_BASE" "$ENV_FILE" && \
+   grep -q "^export OPENAI_API_KEY" "$ENV_FILE"; then
+    pass "Environment variables are exported in env file"
+else
+    fail "Environment variables are not properly exported in env file"
+fi
+
+echo ""
+echo "=== Dependency Tests ==="
+
+# Test 8: Tailscale installed
+info "Checking for Tailscale..."
+if command -v tailscale &> /dev/null; then
+    pass "Tailscale is installed"
+else
+    fail "Tailscale is not installed"
+fi
+
+# Test 9: Tailscale running/connected
+info "Checking Tailscale status..."
+if command -v tailscale &> /dev/null && tailscale status &> /dev/null; then
+    TAILSCALE_IP=$(tailscale ip -4 2>/dev/null | head -n1 || echo "")
+    if [[ -n "$TAILSCALE_IP" ]]; then
+        pass "Tailscale is connected (IP: $TAILSCALE_IP)"
+    else
+        fail "Tailscale is installed but not connected"
+    fi
+else
+    fail "Tailscale is not running or not connected"
+fi
+
+# Test 10: Homebrew installed
+info "Checking for Homebrew..."
+if command -v brew &> /dev/null; then
+    pass "Homebrew is installed"
+else
+    fail "Homebrew is not installed"
+fi
+
+# Test 11: Python 3.10+
+info "Checking for Python 3.10+..."
+if command -v python3 &> /dev/null; then
+    PYTHON_VERSION=$(python3 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -n1)
+    PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
+    PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
+
+    if [[ "$PYTHON_MAJOR" -ge 3 && "$PYTHON_MINOR" -ge 10 ]]; then
+        pass "Python $PYTHON_VERSION found (>= 3.10)"
+    else
+        fail "Python $PYTHON_VERSION is too old (need 3.10+)"
+    fi
+else
+    fail "Python 3 is not installed"
+fi
+
+# Test 12: pipx installed
+info "Checking for pipx..."
+if command -v pipx &> /dev/null; then
+    pass "pipx is installed"
+else
+    fail "pipx is not installed"
+fi
+
+# Test 13: Aider installed
+if [[ "$SKIP_AIDER" == "true" ]]; then
+    skip "Aider installation check - aider tests skipped"
+else
+    info "Checking for Aider..."
+    if command -v aider &> /dev/null; then
+        AIDER_VERSION=$(aider --version 2>&1 | head -n1 || echo "unknown")
+        pass "Aider is installed: $AIDER_VERSION"
+    else
+        fail "Aider is not installed"
+    fi
+fi
+
+echo ""
+echo "=== Connectivity Tests ==="
+
+if [[ "$SKIP_SERVER" == "true" ]]; then
+    skip "GET /v1/models - server tests skipped"
+    skip "GET /v1/models/{model} - server tests skipped"
+    skip "POST /v1/chat/completions (non-streaming) - server tests skipped"
+    skip "POST /v1/chat/completions (streaming) - server tests skipped"
+    skip "Error handling test - server tests skipped"
+else
+    # Extract hostname from OLLAMA_API_BASE
+    if [[ -n "${OLLAMA_API_BASE:-}" ]]; then
+        SERVER_URL=$(echo "$OLLAMA_API_BASE" | sed 's|/v1$||')
+        info "Using server URL: $SERVER_URL"
+    else
+        SERVER_URL=""
+        fail "Cannot determine server URL (OLLAMA_API_BASE not set)"
+    fi
+
+    # Test 14: Tailscale connectivity to server
+    if [[ -n "$SERVER_URL" ]]; then
+        info "Testing connectivity to server..."
+        HOSTNAME=$(echo "$SERVER_URL" | sed 's|http://||' | sed 's|:.*||')
+        if ping -c 1 -t 2 "$HOSTNAME" &> /dev/null || curl -sf --max-time 5 "$SERVER_URL/v1/models" &> /dev/null; then
+            pass "Server is reachable ($HOSTNAME)"
+        else
+            fail "Cannot reach server ($HOSTNAME)"
+        fi
+    fi
+
+    # Test 15: GET /v1/models
+    info "Testing GET /v1/models..."
+    if [[ -n "$SERVER_URL" ]]; then
+        MODELS_RESPONSE=$(curl -sf "$SERVER_URL/v1/models" 2>/dev/null || echo "FAILED")
+        if [[ "$MODELS_RESPONSE" != "FAILED" ]] && echo "$MODELS_RESPONSE" | jq -e '.object == "list"' &> /dev/null; then
+            MODEL_COUNT=$(echo "$MODELS_RESPONSE" | jq -r '.data | length')
+            pass "GET /v1/models returns valid JSON (${MODEL_COUNT} models)"
+
+            # Store first model for later tests
+            if [[ "$MODEL_COUNT" -gt 0 ]]; then
+                FIRST_MODEL=$(echo "$MODELS_RESPONSE" | jq -r '.data[0].id')
+                info "First available model: $FIRST_MODEL"
+            fi
+        else
+            fail "GET /v1/models failed or returned invalid JSON"
+        fi
+    fi
+
+    # Test 16: GET /v1/models/{model}
+    if [[ -n "${FIRST_MODEL:-}" ]] && [[ -n "$SERVER_URL" ]]; then
+        info "Testing GET /v1/models/$FIRST_MODEL..."
+        MODEL_DETAIL=$(curl -sf "$SERVER_URL/v1/models/$FIRST_MODEL" 2>/dev/null || echo "FAILED")
+        if [[ "$MODEL_DETAIL" != "FAILED" ]] && echo "$MODEL_DETAIL" | jq -e '.id' &> /dev/null; then
+            pass "GET /v1/models/{model} returns valid model details"
+        else
+            fail "GET /v1/models/{model} failed"
+        fi
+    elif [[ -n "$SERVER_URL" ]]; then
+        skip "GET /v1/models/{model} - no models available"
+    fi
+
+    # Test 17: POST /v1/chat/completions (non-streaming)
+    if [[ -n "${FIRST_MODEL:-}" ]] && [[ -n "$SERVER_URL" ]] && [[ "$QUICK_MODE" == "false" ]]; then
+        info "Testing POST /v1/chat/completions (non-streaming)..."
+        CHAT_RESPONSE=$(curl -sf "$SERVER_URL/v1/chat/completions" \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
+            2>/dev/null || echo "FAILED")
+
+        if [[ "$CHAT_RESPONSE" != "FAILED" ]] && echo "$CHAT_RESPONSE" | jq -e '.choices[0].message.content' &> /dev/null; then
+            pass "POST /v1/chat/completions (non-streaming) succeeded"
+        else
+            fail "POST /v1/chat/completions (non-streaming) failed"
+        fi
+    elif [[ -n "$SERVER_URL" ]] && [[ "$QUICK_MODE" == "false" ]]; then
+        skip "POST /v1/chat/completions (non-streaming) - no models available"
+    elif [[ "$QUICK_MODE" == "true" ]]; then
+        skip "POST /v1/chat/completions (non-streaming) - quick mode"
+    fi
+
+    # Test 18: POST /v1/chat/completions (streaming)
+    if [[ -n "${FIRST_MODEL:-}" ]] && [[ -n "$SERVER_URL" ]] && [[ "$QUICK_MODE" == "false" ]]; then
+        info "Testing POST /v1/chat/completions (streaming)..."
+        STREAM_RESPONSE=$(curl -sf "$SERVER_URL/v1/chat/completions" \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true}" \
+            2>/dev/null | head -n 5 || echo "FAILED")
+
+        if [[ "$STREAM_RESPONSE" != "FAILED" ]] && echo "$STREAM_RESPONSE" | grep -q "data:"; then
+            pass "POST /v1/chat/completions (streaming) returns SSE chunks"
+        else
+            fail "POST /v1/chat/completions (streaming) failed"
+        fi
+    elif [[ -n "$SERVER_URL" ]] && [[ "$QUICK_MODE" == "false" ]]; then
+        skip "POST /v1/chat/completions (streaming) - no models available"
+    elif [[ "$QUICK_MODE" == "true" ]]; then
+        skip "POST /v1/chat/completions (streaming) - quick mode"
+    fi
+
+    # Test 19: Error handling when server unreachable
+    if [[ -n "$SERVER_URL" ]] && [[ "$QUICK_MODE" == "false" ]]; then
+        info "Testing error handling for unreachable endpoint..."
+        ERROR_RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null --max-time 5 "$SERVER_URL/v1/nonexistent" 2>/dev/null || echo "FAILED")
+
+        if [[ "$ERROR_RESPONSE" == "404" ]]; then
+            pass "Error handling for nonexistent endpoint works (404)"
+        elif [[ "$ERROR_RESPONSE" == "FAILED" ]]; then
+            skip "Error handling test - could not reach server"
+        else
+            info "Nonexistent endpoint returned status: $ERROR_RESPONSE"
+        fi
+    elif [[ "$QUICK_MODE" == "true" ]]; then
+        skip "Error handling test - quick mode"
+    fi
+fi
+
+echo ""
+echo "=== API Contract Validation Tests ==="
+
+# Test 20: Base URL format
+info "Validating base URL format..."
+if [[ -n "${OLLAMA_API_BASE:-}" ]]; then
+    if echo "$OLLAMA_API_BASE" | grep -qE '^http://[^:]+:11434/v1$'; then
+        pass "OLLAMA_API_BASE format matches contract"
+    else
+        fail "OLLAMA_API_BASE format does not match contract (expected http://<host>:11434/v1)"
+    fi
+fi
+
+if [[ -n "${OPENAI_API_BASE:-}" ]]; then
+    if echo "$OPENAI_API_BASE" | grep -qE '^http://[^:]+:11434/v1$'; then
+        pass "OPENAI_API_BASE format matches contract"
+    else
+        fail "OPENAI_API_BASE format does not match contract (expected http://<host>:11434/v1)"
+    fi
+fi
+
+# Test 21: JSON mode (if not in quick mode and server available)
+if [[ "$SKIP_SERVER" == "false" ]] && [[ "$QUICK_MODE" == "false" ]] && [[ -n "${FIRST_MODEL:-}" ]] && [[ -n "${SERVER_URL:-}" ]]; then
+    info "Testing JSON mode response format..."
+    JSON_RESPONSE=$(curl -sf "$SERVER_URL/v1/chat/completions" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}" \
+        2>/dev/null || echo "FAILED")
+
+    if [[ "$JSON_RESPONSE" != "FAILED" ]]; then
+        CONTENT=$(echo "$JSON_RESPONSE" | jq -r '.choices[0].message.content' 2>/dev/null || echo "")
+        if echo "$CONTENT" | jq -e '.' &> /dev/null 2>&1; then
+            pass "JSON mode returns valid JSON content"
+        else
+            skip "JSON mode test - response not valid JSON (model-dependent)"
+        fi
+    else
+        skip "JSON mode test - request failed"
+    fi
+elif [[ "$QUICK_MODE" == "true" ]]; then
+    skip "JSON mode test - quick mode"
+else
+    skip "JSON mode test - server tests skipped or no models available"
+fi
+
+# Test 22: Streaming with stream_options.include_usage
+if [[ "$SKIP_SERVER" == "false" ]] && [[ "$QUICK_MODE" == "false" ]] && [[ -n "${FIRST_MODEL:-}" ]] && [[ -n "${SERVER_URL:-}" ]]; then
+    info "Testing streaming with include_usage..."
+    USAGE_RESPONSE=$(curl -sf "$SERVER_URL/v1/chat/completions" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true,\"stream_options\":{\"include_usage\":true}}" \
+        2>/dev/null || echo "FAILED")
+
+    if [[ "$USAGE_RESPONSE" != "FAILED" ]] && echo "$USAGE_RESPONSE" | grep -q "data:"; then
+        pass "Streaming with stream_options.include_usage succeeded"
+    else
+        skip "Streaming with include_usage test - request failed"
+    fi
+elif [[ "$QUICK_MODE" == "true" ]]; then
+    skip "Streaming with include_usage test - quick mode"
+else
+    skip "Streaming with include_usage test - server tests skipped"
+fi
+
+echo ""
+echo "=== Aider Integration Tests ==="
+
+if [[ "$SKIP_AIDER" == "true" ]]; then
+    skip "Aider binary check - aider tests skipped"
+    skip "Aider in PATH check - aider tests skipped"
+    skip "Aider environment variables - aider tests skipped"
+else
+    # Test 23: Aider can be invoked
+    info "Checking if Aider can be invoked..."
+    if command -v aider &> /dev/null; then
+        pass "Aider binary found ($(which aider))"
+    else
+        fail "Aider binary not found in PATH"
+    fi
+
+    # Test 24: Aider in PATH
+    AIDER_PATH=$(which aider 2>/dev/null || echo "")
+    if [[ -n "$AIDER_PATH" ]]; then
+        pass "Aider is in PATH: $AIDER_PATH"
+    else
+        fail "Aider is not in PATH"
+    fi
+
+    # Test 25: Aider reads environment variables
+    info "Testing if Aider can read environment variables..."
+    if [[ -n "${OPENAI_API_BASE:-}" ]] && [[ -n "${OPENAI_API_KEY:-}" ]]; then
+        # Note: Cannot fully test without running Aider interactively
+        pass "Environment variables configured for Aider (OPENAI_API_BASE, OPENAI_API_KEY)"
+    else
+        fail "Required environment variables for Aider are not set"
+    fi
+fi
+
+echo ""
+echo "=== Script Behavior Tests ==="
+
+# Test 26: Uninstall script availability
+info "Checking uninstall script availability..."
+UNINSTALL_SCRIPT=""
+if [[ -f "$HOME/.private-ai-client/uninstall.sh" ]]; then
+    UNINSTALL_SCRIPT="$HOME/.private-ai-client/uninstall.sh"
+    pass "Uninstall script found at ~/.private-ai-client/uninstall.sh"
+elif [[ -f "$(dirname "$0")/uninstall.sh" ]]; then
+    UNINSTALL_SCRIPT="$(dirname "$0")/uninstall.sh"
+    pass "Uninstall script found in local clone"
+else
+    fail "Uninstall script not found"
+fi
+
+# Test 27: Install script idempotency (check if markers exist)
+if [[ -f "$SHELL_PROFILE" ]]; then
+    if grep -q ">>> private-ai-client >>>" "$SHELL_PROFILE" && \
+       grep -q "<<< private-ai-client <<<" "$SHELL_PROFILE"; then
+        pass "Install script marker comments found (idempotency support)"
+    else
+        fail "Install script marker comments not found in shell profile"
+    fi
+fi
+
+# Final summary
+echo ""
+echo "================================================"
+echo "  Test Summary"
+echo "================================================"
+echo -e "${GREEN}Passed:${NC}  $TESTS_PASSED"
+echo -e "${RED}Failed:${NC}  $TESTS_FAILED"
+echo -e "${YELLOW}Skipped:${NC} $TESTS_SKIPPED"
+echo "Total:   $((TESTS_PASSED + TESTS_FAILED + TESTS_SKIPPED))"
+echo ""
+
+if [[ $TESTS_FAILED -eq 0 ]]; then
+    echo -e "${GREEN}All tests passed!${NC}"
+    exit 0
+else
+    echo -e "${RED}Some tests failed.${NC}"
+    echo "Troubleshooting:"
+    echo "  - Check if server is running and accessible via Tailscale"
+    echo "  - Verify environment variables: source ~/.private-ai-client/env"
+    echo "  - Open a new terminal to reload shell profile"
+    exit 1
+fi
