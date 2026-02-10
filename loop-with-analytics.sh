@@ -206,11 +206,16 @@ fi
 
 RUN_ID=$(date +%Y%m%d-%H%M%S)
 ANALYTICS_DIR="analytics/run-${RUN_ID}"
-mkdir -p "$ANALYTICS_DIR"
+mkdir -p "$ANALYTICS_DIR" || {
+    echo -e "${RED_BOLD}Warning: Failed to create analytics directory: $ANALYTICS_DIR${RESET}"
+    echo -e "${YELLOW_BOLD}Analytics will be disabled for this run${RESET}"
+    ANALYTICS_DIR="/tmp/analytics-disabled-$$"
+    mkdir -p "$ANALYTICS_DIR" 2>/dev/null || true
+}
 
 # Create analytics summary file
 SUMMARY_FILE="${ANALYTICS_DIR}/summary.md"
-cat > "$SUMMARY_FILE" << EOF
+cat > "$SUMMARY_FILE" 2>/dev/null << EOF
 # Ralph Loop Analytics - Run ${RUN_ID}
 
 **Mode**: $MODE
@@ -228,6 +233,13 @@ analyze_iteration() {
     local iter_num=$1
     local json_log=$2
     local output_file="${ANALYTICS_DIR}/iteration-${iter_num}-analysis.txt"
+
+    # Check if JSON log exists
+    if [ ! -f "$json_log" ]; then
+        echo -e "${RED_BOLD}Warning: JSON log file not found: $json_log${RESET}"
+        echo -e "${YELLOW_BOLD}Skipping analytics for iteration ${iter_num}${RESET}"
+        return 0
+    fi
 
     echo -e "${CYAN_BOLD}Analyzing iteration ${iter_num}...${RESET}"
 
@@ -269,8 +281,9 @@ analyze_iteration() {
         cache_hit_rate=$((cache_read * 100 / cache_eligible))
     fi
 
-    # Write detailed analysis
-    cat > "$output_file" << EOF
+    # Write detailed analysis (ensure directory exists)
+    mkdir -p "$ANALYTICS_DIR" 2>/dev/null || true
+    cat > "$output_file" 2>/dev/null << EOF
 === Iteration ${iter_num} Analysis ===
 
 Tool Usage:
@@ -303,6 +316,12 @@ Shallow/Deep ratio:    $((tool_read + tool_grep + tool_glob)):$((tool_edit + too
 
 EOF
 
+    # Check if file write succeeded
+    if [ ! -f "$output_file" ]; then
+        echo -e "${RED_BOLD}Warning: Failed to write analysis file: $output_file${RESET}"
+        echo -e "${YELLOW_BOLD}Continuing with loop...${RESET}"
+    fi
+
     # Display summary
     echo -e "\n${GREEN_BOLD}═══════════════════════════════════════════════════════${RESET}"
     echo -e "${GREEN_BOLD}   Iteration ${iter_num} Analytics${RESET}"
@@ -322,8 +341,9 @@ EOF
     echo -e "  ${GREEN_BOLD}Shallow:Deep ratio = $((tool_read + tool_grep + tool_glob)):$((tool_edit + tool_write))${RESET}"
     echo -e "${GREEN_BOLD}═══════════════════════════════════════════════════════${RESET}\n"
 
-    # Append to summary
-    cat >> "$SUMMARY_FILE" << EOF
+    # Append to summary (ensure directory exists)
+    mkdir -p "$ANALYTICS_DIR" 2>/dev/null || true
+    cat >> "$SUMMARY_FILE" 2>/dev/null << EOF
 ## Iteration ${iter_num}
 
 | Metric | Value |
@@ -464,7 +484,7 @@ done
 # Final summary
 # ────────────────────────────────────────────────
 
-cat >> "$SUMMARY_FILE" << EOF
+cat >> "$SUMMARY_FILE" 2>/dev/null << EOF
 
 ---
 
@@ -541,7 +561,7 @@ echo -e "${CYAN_BOLD}Full report saved to:${RESET} ${ANALYTICS_DIR}/summary.md"
 echo -e "${GREEN_BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 
 # Append aggregate stats to summary
-cat >> "$SUMMARY_FILE" << EOF
+cat >> "$SUMMARY_FILE" 2>/dev/null << EOF
 ### Aggregate Statistics
 
 - **Total subagents spawned**: ${total_subagents}
