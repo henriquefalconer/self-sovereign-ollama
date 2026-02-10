@@ -1,17 +1,28 @@
 # private-ai-client – Setup Instructions (macOS)
 
-## 1. Clone the repository
+## Installation
+
+Choose one of the following methods:
+
+### Option 1: Quick Install (Recommended)
+
+Run the installer directly via curl:
 
 ```bash
-git clone https://github.com/yourusername/private-ai-api.git
-cd private-ai-api/client
+curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/main/client/scripts/install.sh | bash
 ```
 
-## 2. Run the installer
+### Option 2: Clone and Install
+
+Clone the repository and run the installer locally:
 
 ```bash
+git clone https://github.com/henriquefalconer/private-ai-api.git
+cd private-ai-api/client
 ./scripts/install.sh
 ```
+
+## What the installer does
 
 The installer will:
 - Check/install Homebrew, Python, Tailscale
@@ -22,7 +33,9 @@ The installer will:
 - Install Aider via pipx
 - Run a connectivity test
 
-## 3. Open a new terminal
+## Post-Installation
+
+### Open a new terminal
 
 ```bash
 exec $SHELL
@@ -30,7 +43,7 @@ exec $SHELL
 
 Or simply open a new terminal window.
 
-## 4. Verify installation
+### Verify installation
 
 ```bash
 # Check environment variables
@@ -45,7 +58,7 @@ aider --version
 curl $OLLAMA_API_BASE/models
 ```
 
-## 5. Use
+## Usage
 
 ```bash
 aider                     # interactive mode - uses server automatically
