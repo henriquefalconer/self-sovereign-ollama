@@ -193,7 +193,7 @@ if [[ -z "$TAILSCALE_IP" ]]; then
 
     while [[ "$CONNECTED" == "false" ]]; do
         # Wait for user to press Enter
-        read -r -p "Press Enter to check connection status (or Ctrl+C to exit and run script later)... "
+        read -r -p "Press Enter to check connection status (or Ctrl+C to exit and run script later)... " < /dev/tty
 
         # Check status
         echo "Checking Tailscale status..."
