@@ -9,6 +9,7 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 info() {
@@ -44,7 +45,7 @@ fi
 
 # Banner
 echo "================================================"
-echo "  Model Warming Script"
+echo "  private-ai-server Model Warming Script"
 echo "================================================"
 echo ""
 info "Models to warm: $*"
@@ -72,14 +73,17 @@ for MODEL in "$@"; do
 
     # Step 1: Pull model
     info "Pulling model (if not present)..."
-    if ollama pull "$MODEL" 2>&1 | grep -q "success"; then
-        info "✓ Model pulled: $MODEL"
+    START_TIME=$(date +%s)
+    if ollama pull "$MODEL"; then
+        END_TIME=$(date +%s)
+        ELAPSED=$((END_TIME - START_TIME))
+        info "✓ Model pulled: $MODEL (${ELAPSED}s)"
     else
         # Check if model already exists
         if ollama list 2>&1 | grep -q "$MODEL"; then
             info "✓ Model already present: $MODEL"
         else
-            error "Failed to pull model: $MODEL"
+            error "✗ Failed: $MODEL"
             FAILED_MODELS+=("$MODEL (pull failed)")
             continue
         fi
@@ -87,6 +91,7 @@ for MODEL in "$@"; do
 
     # Step 2: Send minimal inference request to load into memory
     info "Loading model into memory..."
+    START_TIME=$(date +%s)
     RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
         -H "Content-Type: application/json" \
         -d "{
@@ -96,12 +101,14 @@ for MODEL in "$@"; do
         }" 2>&1 || echo "FAILED")
 
     if [[ "$RESPONSE" == "FAILED" ]] || ! echo "$RESPONSE" | grep -q "choices"; then
-        error "Failed to load model into memory: $MODEL"
+        error "✗ Failed: $MODEL"
         FAILED_MODELS+=("$MODEL (load failed)")
         continue
     fi
 
-    info "✓ Model loaded into memory: $MODEL"
+    END_TIME=$(date +%s)
+    ELAPSED=$((END_TIME - START_TIME))
+    info "✓ Ready: $MODEL (${ELAPSED}s)"
     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
     echo ""
 done

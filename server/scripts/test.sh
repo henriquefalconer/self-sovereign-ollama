@@ -172,29 +172,60 @@ if [[ -n "${FIRST_MODEL:-}" ]]; then
         fail "GET /v1/models/{model} failed or returned invalid JSON"
     fi
 else
-    skip "GET /v1/models/{model} - no models available"
+    skip "GET /v1/models/{model} - no models available" "Pull a model first using 'ollama pull llama3.2' or similar"
 fi
 
 # Test 7-12: Chat completions tests (skip if no models or --skip-model-tests)
 if [[ "$SKIP_MODEL_TESTS" == "true" ]]; then
-    skip "POST /v1/chat/completions (non-streaming) - model tests skipped"
-    skip "POST /v1/chat/completions (streaming) - model tests skipped"
-    skip "POST /v1/chat/completions (stream_options.include_usage) - model tests skipped"
-    skip "POST /v1/chat/completions (JSON mode) - model tests skipped"
-    skip "POST /v1/responses - model tests skipped"
+    skip "POST /v1/chat/completions (non-streaming) - model tests skipped" "Run without --skip-model-tests flag"
+    skip "POST /v1/chat/completions (streaming) - model tests skipped" "Run without --skip-model-tests flag"
+    skip "POST /v1/chat/completions (stream_options.include_usage) - model tests skipped" "Run without --skip-model-tests flag"
+    skip "POST /v1/chat/completions (JSON mode) - model tests skipped" "Run without --skip-model-tests flag"
+    skip "POST /v1/responses - model tests skipped" "Run without --skip-model-tests flag"
 elif [[ -z "${FIRST_MODEL:-}" ]]; then
-    skip "POST /v1/chat/completions (non-streaming) - no models available"
-    skip "POST /v1/chat/completions (streaming) - no models available"
-    skip "POST /v1/chat/completions (stream_options.include_usage) - no models available"
-    skip "POST /v1/chat/completions (JSON mode) - no models available"
-    skip "POST /v1/responses - no models available"
+    skip "POST /v1/chat/completions (non-streaming) - no models available" "Pull a model first using 'ollama pull llama3.2' or similar"
+    skip "POST /v1/chat/completions (streaming) - no models available" "Pull a model first using 'ollama pull llama3.2' or similar"
+    skip "POST /v1/chat/completions (stream_options.include_usage) - no models available" "Pull a model first using 'ollama pull llama3.2' or similar"
+    skip "POST /v1/chat/completions (JSON mode) - no models available" "Pull a model first using 'ollama pull llama3.2' or similar"
+    skip "POST /v1/responses - no models available" "Pull a model first using 'ollama pull llama3.2' or similar"
 else
     # Test 7: Non-streaming chat completion
     info "Testing POST /v1/chat/completions (non-streaming) with model: $FIRST_MODEL..."
-    CHAT_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
-        -H "Content-Type: application/json" \
-        -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
-        2>/dev/null || echo "FAILED")
+
+    # Measure timing for verbose mode
+    START_TIME=$(date +%s%N 2>/dev/null || date +%s)
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        # Verbose mode: show request/response details
+        info "Request: POST http://localhost:11434/v1/chat/completions"
+        info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}"
+
+        CHAT_RESPONSE=$(curl -v http://localhost:11434/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
+            2>&1 || echo "FAILED")
+
+        info "Response:"
+        echo "$CHAT_RESPONSE" | tail -20 | while IFS= read -r line; do
+            info "  $line"
+        done
+    else
+        CHAT_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
+            2>/dev/null || echo "FAILED")
+    fi
+
+    END_TIME=$(date +%s%N 2>/dev/null || date +%s)
+    if [[ "$START_TIME" =~ N ]]; then
+        ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
+    else
+        ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
+    fi
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        info "Elapsed time: ${ELAPSED_MS}ms"
+    fi
 
     if [[ "$CHAT_RESPONSE" != "FAILED" ]] && echo "$CHAT_RESPONSE" | jq -e '.choices[0].message.content' &> /dev/null; then
         pass "POST /v1/chat/completions (non-streaming) succeeded"
@@ -204,10 +235,41 @@ else
 
     # Test 8: Streaming chat completion
     info "Testing POST /v1/chat/completions (streaming)..."
-    STREAM_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
-        -H "Content-Type: application/json" \
-        -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true}" \
-        2>/dev/null | head -n 5 || echo "FAILED")
+
+    # Measure timing for verbose mode
+    START_TIME=$(date +%s%N 2>/dev/null || date +%s)
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        # Verbose mode: show request/response details
+        info "Request: POST http://localhost:11434/v1/chat/completions (streaming)"
+        info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true}"
+
+        STREAM_RESPONSE=$(curl -v http://localhost:11434/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true}" \
+            2>&1 || echo "FAILED")
+
+        info "Response (first 10 lines):"
+        echo "$STREAM_RESPONSE" | head -n 10 | while IFS= read -r line; do
+            info "  $line"
+        done
+    else
+        STREAM_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true}" \
+            2>/dev/null | head -n 5 || echo "FAILED")
+    fi
+
+    END_TIME=$(date +%s%N 2>/dev/null || date +%s)
+    if [[ "$START_TIME" =~ N ]]; then
+        ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
+    else
+        ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
+    fi
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        info "Elapsed time: ${ELAPSED_MS}ms"
+    fi
 
     if [[ "$STREAM_RESPONSE" != "FAILED" ]] && echo "$STREAM_RESPONSE" | grep -q "data:"; then
         pass "POST /v1/chat/completions (streaming) returns SSE chunks"
@@ -217,23 +279,101 @@ else
 
     # Test 9: Streaming with include_usage
     info "Testing POST /v1/chat/completions (stream_options.include_usage)..."
-    USAGE_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
-        -H "Content-Type: application/json" \
-        -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true,\"stream_options\":{\"include_usage\":true}}" \
-        2>/dev/null || echo "FAILED")
+
+    # Measure timing for verbose mode
+    START_TIME=$(date +%s%N 2>/dev/null || date +%s)
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        # Verbose mode: show request/response details
+        info "Request: POST http://localhost:11434/v1/chat/completions (streaming with include_usage)"
+        info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true,\"stream_options\":{\"include_usage\":true}}"
+
+        USAGE_RESPONSE=$(curl -v http://localhost:11434/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true,\"stream_options\":{\"include_usage\":true}}" \
+            2>&1 || echo "FAILED")
+
+        info "Response (all SSE chunks):"
+        echo "$USAGE_RESPONSE" | grep "^data:" | while IFS= read -r line; do
+            info "  $line"
+        done
+    else
+        USAGE_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true,\"stream_options\":{\"include_usage\":true}}" \
+            2>/dev/null || echo "FAILED")
+    fi
+
+    END_TIME=$(date +%s%N 2>/dev/null || date +%s)
+    if [[ "$START_TIME" =~ N ]]; then
+        ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
+    else
+        ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
+    fi
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        info "Elapsed time: ${ELAPSED_MS}ms"
+    fi
 
     if [[ "$USAGE_RESPONSE" != "FAILED" ]] && echo "$USAGE_RESPONSE" | grep -q "data:"; then
-        pass "POST /v1/chat/completions (stream_options.include_usage) succeeded"
+        # F3.5: Verify usage data in streaming response
+        # Extract the final SSE chunk (should contain usage data)
+        FINAL_CHUNK=$(echo "$USAGE_RESPONSE" | grep "^data:" | grep -v "data: \[DONE\]" | tail -n1)
+
+        if [[ -n "$FINAL_CHUNK" ]]; then
+            # Remove "data: " prefix and parse JSON
+            JSON_DATA=$(echo "$FINAL_CHUNK" | sed 's/^data: //')
+
+            # Check for usage field in the final chunk
+            if echo "$JSON_DATA" | jq -e '.usage' &> /dev/null; then
+                pass "POST /v1/chat/completions (stream_options.include_usage) succeeded (usage field found)"
+            else
+                fail "POST /v1/chat/completions (stream_options.include_usage) - usage field not found" "usage field in final SSE chunk" "No usage field detected"
+            fi
+        else
+            fail "POST /v1/chat/completions (stream_options.include_usage) - no data chunks received"
+        fi
     else
         fail "POST /v1/chat/completions (stream_options.include_usage) failed"
     fi
 
     # Test 10: JSON mode
     info "Testing POST /v1/chat/completions (JSON mode)..."
-    JSON_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
-        -H "Content-Type: application/json" \
-        -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object with a single field 'status' set to 'ok'\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}" \
-        2>/dev/null || echo "FAILED")
+
+    # Measure timing for verbose mode
+    START_TIME=$(date +%s%N 2>/dev/null || date +%s)
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        # Verbose mode: show request/response details
+        info "Request: POST http://localhost:11434/v1/chat/completions (JSON mode)"
+        info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object with a single field 'status' set to 'ok'\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}"
+
+        JSON_RESPONSE=$(curl -v http://localhost:11434/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object with a single field 'status' set to 'ok'\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}" \
+            2>&1 || echo "FAILED")
+
+        info "Response:"
+        echo "$JSON_RESPONSE" | tail -20 | while IFS= read -r line; do
+            info "  $line"
+        done
+    else
+        JSON_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object with a single field 'status' set to 'ok'\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}" \
+            2>/dev/null || echo "FAILED")
+    fi
+
+    END_TIME=$(date +%s%N 2>/dev/null || date +%s)
+    if [[ "$START_TIME" =~ N ]]; then
+        ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
+    else
+        ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
+    fi
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        info "Elapsed time: ${ELAPSED_MS}ms"
+    fi
 
     if [[ "$JSON_RESPONSE" != "FAILED" ]] && echo "$JSON_RESPONSE" | jq -e '.choices[0].message.content' &> /dev/null; then
         CONTENT=$(echo "$JSON_RESPONSE" | jq -r '.choices[0].message.content')
@@ -248,19 +388,50 @@ else
 
     # Test 11: /v1/responses endpoint (experimental, Ollama 0.5.0+)
     info "Testing POST /v1/responses (experimental)..."
-    RESPONSES_RESPONSE=$(curl -sf http://localhost:11434/v1/responses \
-        -H "Content-Type: application/json" \
-        -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
-        2>/dev/null || echo "FAILED")
+
+    # Measure timing for verbose mode
+    START_TIME=$(date +%s%N 2>/dev/null || date +%s)
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        # Verbose mode: show request/response details
+        info "Request: POST http://localhost:11434/v1/responses (experimental)"
+        info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}"
+
+        RESPONSES_RESPONSE=$(curl -v http://localhost:11434/v1/responses \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
+            2>&1 || echo "FAILED")
+
+        info "Response:"
+        echo "$RESPONSES_RESPONSE" | tail -20 | while IFS= read -r line; do
+            info "  $line"
+        done
+    else
+        RESPONSES_RESPONSE=$(curl -sf http://localhost:11434/v1/responses \
+            -H "Content-Type: application/json" \
+            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
+            2>/dev/null || echo "FAILED")
+    fi
+
+    END_TIME=$(date +%s%N 2>/dev/null || date +%s)
+    if [[ "$START_TIME" =~ N ]]; then
+        ELAPSED_MS=$(( (END_TIME - START_TIME) / 1000000 ))
+    else
+        ELAPSED_MS=$(( (END_TIME - START_TIME) * 1000 ))
+    fi
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        info "Elapsed time: ${ELAPSED_MS}ms"
+    fi
 
     if [[ "$RESPONSES_RESPONSE" != "FAILED" ]]; then
         if echo "$RESPONSES_RESPONSE" | jq -e '.' &> /dev/null; then
             pass "POST /v1/responses succeeded (Ollama 0.5.0+)"
         else
-            skip "POST /v1/responses - endpoint exists but returned non-JSON (may not be supported)"
+            skip "POST /v1/responses - endpoint exists but returned non-JSON (may not be supported)" "Upgrade to Ollama 0.5.0+"
         fi
     else
-        skip "POST /v1/responses - endpoint not available (requires Ollama 0.5.0+)"
+        skip "POST /v1/responses - endpoint not available" "Upgrade to Ollama 0.5.0+"
     fi
 fi
 
@@ -344,7 +515,7 @@ if lsof -i :11434 -sTCP:LISTEN 2>/dev/null | grep -q "0.0.0.0:11434" || \
    netstat -an 2>/dev/null | grep "11434" | grep -q "LISTEN"; then
     pass "Service binds to all interfaces (0.0.0.0)"
 else
-    skip "Could not verify service binding (lsof/netstat unavailable or ambiguous)"
+    skip "Could not verify service binding (lsof/netstat unavailable or ambiguous)" "Install network tools or check manually with 'lsof -i :11434'"
 fi
 
 # Test 19: Localhost access
@@ -366,17 +537,18 @@ if command -v tailscale &> /dev/null && tailscale ip -4 &> /dev/null; then
             fail "Tailscale IP access failed"
         fi
     else
-        skip "Tailscale IP not available"
+        skip "Tailscale IP not available" "Connect to Tailscale or check 'tailscale status'"
     fi
 else
-    skip "Tailscale not installed or not connected"
+    skip "Tailscale not installed or not connected" "Install Tailscale via 'brew install tailscale' and connect"
 fi
 
-# Final summary
+# Final summary (F3.8: Use box-drawing characters)
 echo ""
-echo "================================================"
-echo "  Test Summary"
-echo "================================================"
+echo "┌────────────────────────────────────────────────┐"
+echo "│              Test Summary                      │"
+echo "└────────────────────────────────────────────────┘"
+echo ""
 echo -e "${GREEN}Passed:${NC}  $TESTS_PASSED"
 echo -e "${RED}Failed:${NC}  $TESTS_FAILED"
 echo -e "${YELLOW}Skipped:${NC} $TESTS_SKIPPED"
@@ -388,6 +560,16 @@ if [[ $TESTS_FAILED -eq 0 ]]; then
     exit 0
 else
     echo -e "${RED}Some tests failed.${NC}"
-    echo "Check logs: tail -f /tmp/ollama.stderr.log"
+    echo ""
+    # F3.9: Add structured next-steps section
+    echo "┌────────────────────────────────────────────────┐"
+    echo "│              Next Steps                        │"
+    echo "└────────────────────────────────────────────────┘"
+    echo "  • Check service status: launchctl list | grep ollama"
+    echo "  • Restart service: launchctl bootout gui/\$(id -u)/com.ollama && launchctl bootstrap gui/\$(id -u) ~/Library/LaunchAgents/com.ollama.plist"
+    echo "  • Check logs: tail -f /tmp/ollama.stderr.log"
+    echo "  • Verify port 11434: lsof -i :11434"
+    echo "  • Check Tailscale connectivity: tailscale status"
+    echo ""
     exit 1
 fi
