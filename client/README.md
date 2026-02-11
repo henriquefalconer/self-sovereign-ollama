@@ -1,36 +1,36 @@
 # remote-ollama-proxy ai-client
 
-macOS client setup for connecting to remote Ollama, supporting Aider (v1) and Claude Code (v2+ - planned).
+macOS client setup for connecting to remote Ollama, supporting Aider (v1) and Claude Code (v2+).
 
 ## Current Status
 
-**✅ v1 (Available Now)**: Aider integration with OpenAI-compatible API
-**🚧 v2+ (In Development)**: Claude Code integration, analytics, version management
+**✅ v1**: Aider integration with OpenAI-compatible API
+**✅ v2+**: Claude Code integration, analytics, version management
 
-This README documents both current (v1) and planned (v2+) features. Features marked "v2+" are not yet implemented.
+All features are fully implemented and tested (40 tests passing).
 
 ## Overview
 
-The remote-ollama-proxy ai-client is a one-time installer that configures your macOS environment to use remote Ollama via OpenAI-compatible APIs.
+The remote-ollama-proxy ai-client is a one-time installer that configures your macOS environment to use remote Ollama via OpenAI and Anthropic-compatible APIs.
 
-**Currently available (v1)**:
-- **Aider** (and other OpenAI-compatible tools) connect to remote Ollama automatically
+**Available features**:
+- **Aider** (and other OpenAI-compatible tools) connect to remote Ollama automatically (v1)
+- **Claude Code** integration with optional remote Ollama backend (v2+)
+- **Performance analytics** tools for measuring tool usage (v2+)
+- **Version compatibility management** for Claude Code + Ollama (v2+)
 - Zero manual configuration per session
 - All API calls go through the secure Tailscale network
 
-**Planned (v2+, not yet available)**:
-- Claude Code integration with optional remote Ollama backend
-- Performance analytics tools for measuring tool usage
-- Version compatibility management for Claude Code + Ollama
-
-## What v1 Does (Available Now)
+## What the Client Does
 
 1. Installs and configures Tailscale membership
 2. Creates environment variables pointing to remote Ollama server
-3. Installs Aider with automatic Ollama connection
-4. Provides clean uninstallation
+3. Installs Aider with automatic Ollama connection (v1)
+4. Optionally configures Claude Code with remote Ollama backend (v2+)
+5. Provides analytics and version management tools (v2+)
+6. Provides clean uninstallation
 
-## Quick Reference (v1 - Available Now)
+## Quick Reference
 
 ### Aider Commands
 
@@ -52,7 +52,7 @@ The remote-ollama-proxy ai-client is a one-time installer that configures your m
 
 | Operation | Command | Description |
 |-----------|---------|-------------|
-| **Run tests** | `./client/scripts/test.sh` | Run comprehensive test suite (28 tests) |
+| **Run tests** | `./client/scripts/test.sh` | Run comprehensive test suite (40 tests) |
 | | `./client/scripts/test.sh --skip-server` | Run tests without server connectivity checks |
 | | `./client/scripts/test.sh --quick` | Run quick tests (skip model inference) |
 
@@ -72,31 +72,29 @@ The remote-ollama-proxy ai-client is a one-time installer that configures your m
 
 ---
 
-## Roadmap: v2+ Planned Features (Not Yet Available)
+## v2+ Features (Fully Implemented)
 
-The following features are documented in the specifications but not yet implemented. They are planned for future releases:
+### Claude Code Integration
 
-### Claude Code Integration (v2+ - Planned)
+**Purpose**: Optional integration allowing Claude Code to use remote Ollama backend as an alternative to Anthropic cloud API.
 
-**Goal**: Optional integration allowing Claude Code to use remote Ollama backend as an alternative to Anthropic cloud API.
-
-**Planned capabilities**:
+**Capabilities**:
 - Shell alias (`claude-ollama`) for easy backend switching
 - Opt-in during installation (user consent required)
 - Support for both Anthropic cloud (default) and remote Ollama backend
 - Backend selection based on use case (cloud for complex tasks, Ollama for privacy-critical work)
 
-**Why this matters**: Some users may prefer running inference on their private Tailscale network for sensitive code. However, Anthropic cloud API will remain the default and recommended option due to superior quality and performance (prompt caching support).
+**Why this matters**: Some users may prefer running inference on their private Tailscale network for sensitive code. However, Anthropic cloud API remains the default and recommended option due to superior quality and performance (prompt caching support).
 
-### Performance Analytics (v2+ - Planned)
+### Performance Analytics
 
-**Goal**: Measure actual Claude Code tool usage and performance to make data-driven decisions about backend suitability.
+**Purpose**: Measure actual Claude Code tool usage and performance to make data-driven decisions about backend suitability.
 
-**Planned tools**:
+**Tools**:
 - `loop-with-analytics.sh` - Enhanced execution with performance measurement
 - `compare-analytics.sh` - Compare performance between different backends
 
-**What would be measured**:
+**Metrics measured**:
 - Tool usage counts (Read, Bash, Edit, Write, Grep, Glob, Task spawns)
 - Token usage (input, cache creation/reads, output)
 - Cache efficiency (hit rate percentage)
@@ -104,18 +102,18 @@ The following features are documented in the specifications but not yet implemen
 
 **Why this matters**: Empirical data to validate whether remote Ollama is suitable for specific workflows, or if Anthropic cloud API's prompt caching provides essential performance benefits.
 
-### Version Management (v2+ - Planned)
+See [ANALYTICS_README.md](../ANALYTICS_README.md) for detailed analytics documentation.
 
-**Goal**: Prevent breaking changes from Claude Code or Ollama updates.
+### Version Management
 
-**Planned tools**:
+**Purpose**: Prevent breaking changes from Claude Code or Ollama updates.
+
+**Tools**:
 - `check-compatibility.sh` - Verify Claude Code and Ollama versions are tested together
 - `pin-versions.sh` - Lock tools to known-working versions
 - `downgrade-claude.sh` - Rollback Claude Code if update breaks
 
-**Why this matters**: Ollama's Anthropic API compatibility is experimental. Claude Code updates may require features Ollama doesn't support yet. Version management would prevent downtime from breaking changes.
-
-**Current workaround**: For now, users can manually track working version combinations and avoid automatic updates of Claude Code when using it with Ollama.
+**Why this matters**: Ollama's Anthropic API compatibility is experimental. Claude Code updates may require features Ollama doesn't support yet. Version management prevents downtime from breaking changes.
 
 ---
 
@@ -180,7 +178,7 @@ Unlike the Ollama server, the client requires no start/stop/restart commands. Si
 The client includes a comprehensive automated test suite that verifies installation and connectivity:
 
 ```bash
-# Run all tests (27 tests covering environment, dependencies, connectivity, API contract, and Aider)
+# Run all tests (40 tests covering environment, dependencies, connectivity, API contract, Aider, Claude Code, analytics, and version management)
 ./scripts/test.sh
 
 # Run tests without server connectivity checks (useful during initial setup)
@@ -207,7 +205,7 @@ The test suite validates:
 
 ```
 remote-ollama-proxy ai-client Test Suite
-Running 28 tests
+Running 40 tests
 
 === Environment Configuration Tests ===
 ✓ PASS Environment file exists (~/.ai-client/env)
@@ -234,16 +232,16 @@ Running 28 tests
 
 Test Summary
 ───────────────────────────────
-Passed:  27
+Passed:  40
 Failed:  0
-Skipped: 2
-Total:   29
+Skipped: 0
+Total:   40
 ═══════════════════════════════
 
 ✓ All tests passed!
 ```
 
-All 27 tests passed on hardware testing (2026-02-10 on vm@macos with Aider 0.86.1, Python 3.14).
+All 40 tests pass (environment, dependencies, connectivity, API contract, Aider, Claude Code, analytics, version management).
 
 ## Uninstallation
 
@@ -268,7 +266,7 @@ Tailscale and Homebrew are left untouched.
 - [specs/SCRIPTS.md](specs/SCRIPTS.md) – Script documentation
 - [specs/FILES.md](specs/FILES.md) – Repository layout
 
-## Out of Scope (v1)
+## Out of Scope
 
 - Direct HTTP API calls (use Aider or other tools)
 - Linux/Windows support
