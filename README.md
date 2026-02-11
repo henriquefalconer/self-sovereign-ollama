@@ -51,7 +51,7 @@ See [client/README.md](client/README.md) for client installation and usage.
 
 ### Claude Code (v2+)
 - **Default**: Uses Anthropic cloud API (Opus 4.6, Sonnet 4.5)
-- **Optional**: Can use local Ollama via Anthropic-compatible API (`/v1/messages`)
+- **Optional**: Can use self-hosted Ollama backend via Anthropic-compatible API (`/v1/messages`)
 - Optional backend switching via shell alias
 - Version compatibility checking and management tools included
 
@@ -115,7 +115,7 @@ Client → Tailscale → HAProxy (allowlist) → Ollama (loopback-bound)
 
 ### Performance Analytics
 - Measure actual tool usage and token consumption
-- Compare performance between cloud and local backends
+- Compare performance between cloud and self-hosted backends
 - Make informed decisions about backend suitability
 - Tools: `loop-with-analytics.sh`, `compare-analytics.sh`
 
