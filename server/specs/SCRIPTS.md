@@ -31,13 +31,41 @@
 - Checks / installs Ollama via Homebrew (output redirected to log)
 - Stops any existing Ollama service (brew services or launchd) to avoid conflicts
 - Creates `~/Library/LaunchAgents/com.ollama.plist` to run Ollama as user-level service
-  - Sets `OLLAMA_HOST=0.0.0.0` to bind all network interfaces
+  - Sets `OLLAMA_HOST=127.0.0.1` to bind loopback interface only
   - Configures `KeepAlive=true` and `RunAtLoad=true` for automatic startup
   - Logs to `/tmp/ollama.stdout.log` and `/tmp/ollama.stderr.log`
 - Loads the plist via `launchctl bootstrap` (modern API)
 - Verifies Ollama is listening on port 11434 (retry loop with timeout)
 - Verifies process is running as user (not root)
 - Runs self-test: `curl -sf http://localhost:11434/v1/models`
+
+### HAProxy Installation & Configuration (Optional)
+- **User consent prompt**: "Install HAProxy proxy? (Y/n)"
+  - Explains benefits: endpoint allowlisting, defense in depth, single choke point
+  - Explains tradeoffs: additional service, minimal latency overhead (<1ms)
+  - Default: Yes
+- If user accepts:
+  - Checks / installs HAProxy via Homebrew: `brew install haproxy`
+  - Suppresses Homebrew noise (consistent with Ollama installation)
+  - Redirects installation output to `/tmp/haproxy-install.log`
+  - Creates `~/.haproxy/` directory for configuration
+  - Generates `~/.haproxy/haproxy.cfg` with:
+    - Frontend listening on Tailscale interface (`100.x.x.x:11434` via `tailscale ip -4`)
+    - Backend forwarding to Ollama on loopback (`127.0.0.1:11434`)
+    - Endpoint allowlist (OpenAI + Anthropic + Ollama metadata APIs)
+    - Default deny for all other paths
+  - Creates `~/Library/LaunchAgents/com.haproxy.plist` with:
+    - `ProgramArguments`: `/opt/homebrew/bin/haproxy -f ~/.haproxy/haproxy.cfg`
+    - `RunAtLoad=true` and `KeepAlive=true`
+    - `StandardOutPath=/tmp/haproxy.stdout.log`
+    - `StandardErrorPath=/tmp/haproxy.stderr.log`
+  - Loads HAProxy service via `launchctl bootstrap`
+  - Verifies HAProxy is listening on Tailscale interface
+  - Verifies proxy forwarding works (test request through proxy)
+- If user declines:
+  - Updates Ollama plist to use `OLLAMA_HOST=0.0.0.0` (fallback mode)
+  - Displays warning about reduced security posture
+  - Continues installation (functional but less secure)
 
 ### Tailscale Configuration Instructions
 - Displays clear, boxed sections for each configuration step
@@ -79,7 +107,13 @@
 - Stops the Ollama LaunchAgent service via `launchctl bootout`
 - Removes `~/Library/LaunchAgents/com.ollama.plist`
 - Cleans up Ollama logs from `/tmp/` (`ollama.stdout.log`, `ollama.stderr.log`)
-- Leaves Homebrew, Tailscale, and Ollama binary untouched (user may want to keep them)
+- **HAProxy cleanup** (if installed):
+  - Stops HAProxy LaunchAgent service via `launchctl bootout`
+  - Removes `~/Library/LaunchAgents/com.haproxy.plist`
+  - Deletes `~/.haproxy/` directory
+  - Cleans up HAProxy logs from `/tmp/` (`haproxy.stdout.log`, `haproxy.stderr.log`)
+  - Handles gracefully if HAProxy was never installed
+- Leaves Homebrew, Tailscale, HAProxy binary, and Ollama binary untouched (user may want to keep them)
 - Leaves downloaded models in `~/.ollama/models/` untouched (valuable data)
 - Handles edge cases gracefully (service not running, plist missing, partial installation)
 
@@ -182,13 +216,37 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
 - Verify Ollama process owner is current user (not root)
 - Verify log files exist and are readable (`/tmp/ollama.stdout.log`, `/tmp/ollama.stderr.log`)
 - Verify plist file exists at `~/Library/LaunchAgents/com.ollama.plist`
-- Verify `OLLAMA_HOST=0.0.0.0` is set in plist environment variables
+- Verify `OLLAMA_HOST=127.0.0.1` is set in plist environment variables (loopback-only binding)
 
 ### Network Tests
-- Verify service binds to all interfaces (0.0.0.0)
-- Test local access via localhost
-- Test local access via Tailscale IP (if Tailscale connected)
+- Verify Ollama service binds to loopback interface only (127.0.0.1:11434)
+  - Use `lsof -i :11434` to check binding
+  - FAIL if service binds to 0.0.0.0 (security violation)
+- Test local access via localhost (should succeed)
+- Test direct Ollama access from Tailscale IP (should fail if HAProxy installed, succeed otherwise)
 - Note: Testing from unauthorized client requires separate client-side test
+
+### HAProxy Tests (skip gracefully if HAProxy not installed)
+- Verify HAProxy LaunchAgent is loaded (`launchctl list | grep com.haproxy`)
+- Verify HAProxy process is running as user (not root)
+- Verify HAProxy is listening on Tailscale interface (`100.x.x.x:11434`)
+- Test allowlisted endpoint forwarding:
+  - `POST /v1/chat/completions` (should succeed - OpenAI API)
+  - `POST /v1/messages` (should succeed - Anthropic API)
+  - `GET /v1/models` (should succeed - OpenAI API)
+  - `GET /api/version` (should succeed - Ollama metadata)
+- Test blocked endpoint enforcement:
+  - `POST /api/generate` (should fail - not in allowlist)
+  - `POST /api/pull` (should fail - not in allowlist)
+  - `DELETE /api/delete` (should fail - not in allowlist)
+  - Expected: 403 Forbidden or 404 Not Found
+- Verify direct Ollama access from Tailscale IP is blocked:
+  - Attempt to connect to Ollama on loopback from Tailscale IP
+  - Expected: Connection refused or timeout (kernel-enforced isolation)
+- Verify HAProxy logs exist and are readable (`/tmp/haproxy.stdout.log`, `/tmp/haproxy.stderr.log`)
+- Verify HAProxy config exists at `~/.haproxy/haproxy.cfg`
+
+**Expected test count**: ~33-34 tests (up from 26 after adding HAProxy tests)
 
 ### Output Format
 - **Per-test results** - Clear pass/fail/skip for each test with brief description
@@ -221,9 +279,13 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
 - Can run with `--skip-model-tests` flag if no models available
 - Non-destructive: does not modify server state (read-only API calls)
 
-## No config files
+## Configuration files
 
-Server requires no configuration files. All settings are managed via:
-- Environment variables in the launchd plist (`OLLAMA_HOST=0.0.0.0`)
+Server configuration is minimal and managed via:
+- Environment variables in the Ollama launchd plist (`OLLAMA_HOST=127.0.0.1`)
+- HAProxy configuration file at `~/.haproxy/haproxy.cfg` (if HAProxy installed)
+  - Frontend binding to Tailscale interface
+  - Backend forwarding to Ollama on loopback
+  - Endpoint allowlist with default deny
 - Ollama's built-in configuration system
 - Tailscale ACLs (managed via Tailscale admin console)

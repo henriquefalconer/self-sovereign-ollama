@@ -27,24 +27,11 @@ Specified: Client → Tailscale → HAProxy (100.x.x.x:11434) → Ollama (127.0.
 
 ## Remaining Tasks
 
-### P1: Align SCRIPTS.md Spec with Security Architecture
-
-**File**: `server/specs/SCRIPTS.md` | **Effort**: Small | **Dependencies**: None (gates all P2 tasks)
-
-SCRIPTS.md says `OLLAMA_HOST=0.0.0.0` in 3 places. All 5 other spec files say `127.0.0.1`. Align with security architecture:
-
-- Change `OLLAMA_HOST=0.0.0.0` to `OLLAMA_HOST=127.0.0.1` throughout
-- Add HAProxy installation section (consent prompt, Homebrew install, config generation, plist creation, service loading)
-- Add HAProxy uninstallation section (stop service, remove plist, delete config dir, clean logs)
-- Add HAProxy test specifications (service loaded, Tailscale interface listening, allowlist enforcement, direct Ollama access blocked)
-- Update Security Tests to verify loopback binding instead of all-interfaces binding
-- Update "No config files" section to reflect HAProxy config existence
-
 ### P2: Implement HAProxy in Server Scripts
 
 #### P2a: Add HAProxy to install.sh
 
-**File**: `server/scripts/install.sh` | **Effort**: Large | **Dependencies**: P1
+**File**: `server/scripts/install.sh` | **Effort**: Large | **Dependencies**: None
 
 1. **User consent prompt** -- "Install HAProxy proxy? (Y/n)" with benefits/tradeoffs. Default: Yes.
 2. **HAProxy installation** -- `brew install haproxy` (suppress Homebrew noise)
@@ -57,7 +44,7 @@ SCRIPTS.md says `OLLAMA_HOST=0.0.0.0` in 3 places. All 5 other spec files say `1
 
 #### P2b: Add HAProxy Cleanup to uninstall.sh
 
-**File**: `server/scripts/uninstall.sh` | **Effort**: Small | **Dependencies**: P1
+**File**: `server/scripts/uninstall.sh` | **Effort**: Small | **Dependencies**: None
 
 - Stop and remove `~/Library/LaunchAgents/com.haproxy.plist` via `launchctl bootout`
 - Delete `~/.haproxy/` directory
@@ -121,11 +108,11 @@ Run full test suites on Apple Silicon server hardware:
 ## Dependency Graph
 
 ```
-P1 (SCRIPTS.md spec alignment)
- ├── P2a (install.sh HAProxy) ─── requires P1
- │    ├── P2c (test.sh HAProxy tests) ─── requires P2a
- │    └── P3d (server docs verification) ─── requires P2a
- └── P2b (uninstall.sh cleanup) ─── requires P1
+P2a (install.sh HAProxy)
+ ├── P2c (test.sh HAProxy tests) ─── requires P2a
+ └── P3d (server docs verification) ─── requires P2a
+
+P2b (uninstall.sh cleanup) ─── independent
 
 P3a (client test.sh timing bug) ─── independent
 P3b (client README update) ─── independent
@@ -134,7 +121,7 @@ P3c (client SCRIPTS.md spec) ─── independent
 P4 (hardware validation) ─── requires P2a, P2c
 ```
 
-**Suggested order**: P1 -> P2a -> P2b + P2c (parallel) -> P3d -> P4. P3a, P3b, P3c can run anytime.
+**Suggested order**: P2a -> P2b + P2c (parallel) -> P3d -> P4. P3a, P3b, P3c can run anytime.
 
 ---
 
