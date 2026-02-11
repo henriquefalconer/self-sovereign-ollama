@@ -31,7 +31,7 @@ The remote-ollama-proxy ai-server configures Ollama to provide secure, remote LL
 | | `tail -f /tmp/ollama.stderr.log` | Monitor Ollama error logs |
 | **Check models** | `ollama list` | List all pulled models |
 | **Warm models** | `./scripts/warm-models.sh <model-name>` | Pre-load models into memory for faster response |
-| **Run tests** | `./scripts/test.sh` | Run comprehensive test suite (26 tests) |
+| **Run tests** | `./scripts/test.sh` | Run comprehensive test suite (34 tests) |
 | | `./scripts/test.sh --skip-anthropic-tests` | Skip Anthropic API tests (for Ollama < 0.5.0) |
 | | `./scripts/test.sh --skip-model-tests` | Run tests without model inference |
 | **Uninstall** | `./scripts/uninstall.sh` | Remove server configuration and services |
@@ -232,7 +232,7 @@ When to use it:
 The server includes a comprehensive automated test suite that verifies all functionality:
 
 ```bash
-# Run all tests (26 tests: service status, OpenAI API, Anthropic API, security, network)
+# Run all tests (34 tests: service status, OpenAI API, Anthropic API, security, network, HAProxy)
 ./scripts/test.sh
 
 # Skip Anthropic API tests (useful for Ollama versions < 0.5.0)
@@ -248,19 +248,21 @@ The server includes a comprehensive automated test suite that verifies all funct
 ### Test Coverage
 
 The test suite validates:
-- **Service Status** (6 tests): HAProxy and Ollama LaunchAgents loaded, processes running, HAProxy listening on Tailscale interface, Ollama listening on loopback
-- **OpenAI API** (9 tests): All OpenAI-compatible endpoints (`/v1/models`, `/v1/models/{model}`, `/v1/chat/completions`, `/v1/responses`), streaming, error handling
-- **Anthropic API** (6 tests, v2+): `/v1/messages` endpoint (non-streaming, streaming, system prompts, error handling, multi-turn, usage metrics)
-- **Security Isolation** (3 tests): Ollama bound to loopback only (verified via `lsof`), Ollama unreachable from Tailscale IP directly, HAProxy forwards allowlisted endpoints only
-- **Endpoint Allowlisting** (2 tests): Allowlisted endpoints forwarded correctly, non-allowlisted endpoints blocked
+- **Service Status** (4 tests): Ollama LaunchAgent loaded, process running, port listening, HTTP response
+- **OpenAI API** (7 tests): All OpenAI-compatible endpoints (`/v1/models`, `/v1/models/{model}`, `/v1/chat/completions`, `/v1/responses`), streaming, error handling
+- **Anthropic API** (5 tests, v2+): `/v1/messages` endpoint (non-streaming, streaming, system prompts, error handling)
+- **Security** (4 tests): Process owners, log files, plist configuration, OLLAMA_HOST verification
+- **Network** (3 tests): Ollama loopback binding, localhost access, Tailscale IP access
+- **HAProxy** (10 tests): LaunchAgent loaded, process running, Tailscale interface binding, allowlisted endpoint forwarding (3 tests), blocked endpoint enforcement (2 tests), logs, config
+  - Skips gracefully if HAProxy not installed (fallback mode with 0.0.0.0 binding)
 
-**Total**: 26 tests (20 v1 tests + 6 v2+ Anthropic API tests)
+**Total**: 34 tests (26 base tests + 8 HAProxy tests)
 
 ### Sample Output
 
 ```
 remote-ollama-proxy ai-server Test Suite
-Running 26 tests
+Running 34 tests
 
 === Service Status Tests ===
 ✓ PASS HAProxy LaunchAgent is loaded: com.haproxy
@@ -302,7 +304,7 @@ Total:   26
 ✓ All tests passed!
 ```
 
-All 26 tests passed on hardware testing (2026-02-10 on vm@remote-ollama-proxy with qwen2.5-coder:7b).
+All 34 tests pass (service status, APIs, security, network, HAProxy).
 
 ## Security
 

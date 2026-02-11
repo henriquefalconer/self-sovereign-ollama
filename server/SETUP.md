@@ -512,7 +512,7 @@ This step is optional but recommended if you want immediate response times after
 If unsure about the state of your installation, run the comprehensive test suite:
 
 ```bash
-# Run all 26 tests (service status, security isolation, OpenAI API, Anthropic API)
+# Run all 34 tests (service status, security, network, OpenAI API, Anthropic API, HAProxy)
 ./scripts/test.sh
 
 # Skip Anthropic API tests (for Ollama < 0.5.0)
