@@ -5,7 +5,9 @@
 
 # self-sovereign-ollama
 
-A self-sovereign AI inference infrastructure using OpenWrt router, WireGuard VPN, and DMZ network segmentation for secure remote access to self-hosted Ollama.
+Secure remote access to Ollama on your hardware.
+
+Complete infrastructure for private AI inference using OpenWrt router, WireGuard VPN, and DMZ network segmentation. Zero third-party dependencies.
 
 ## Project Structure
 
