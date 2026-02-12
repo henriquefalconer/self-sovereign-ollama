@@ -13,20 +13,15 @@
 
 | Component | v2 Compliance | Summary |
 |-----------|:------------:|---------|
-| **Specs** | 100% | All 18 specs (9 server, 9 client) are v2-compliant. |
-| **Server Scripts** | ~20% | Only `warm-models.sh` is v2-compliant. `install.sh`, `uninstall.sh`, `test.sh` are v1. |
-| **Client Scripts** | ~60% | `check-compatibility.sh`, `pin-versions.sh`, `downgrade-claude.sh`, `env.template` are v2-compliant. `install.sh`, `uninstall.sh`, `test.sh` still reference Tailscale. |
+| **Specs** | 100% | All 18 specs (9 server, 9 client) are v2-compliant. v1 refs are legitimate historical context only. |
+| **Server Scripts** | ~15% | `warm-models.sh` is mostly v2-compliant but uses `localhost` (breaks with DMZ-only binding). `install.sh`, `uninstall.sh`, `test.sh` are v1. |
+| **Client Scripts** | ~55% | `check-compatibility.sh`, `pin-versions.sh`, `downgrade-claude.sh` are v2-compliant. `env.template` is v2-compliant. `install.sh`, `uninstall.sh`, `test.sh` still reference Tailscale. |
 | **Root Analytics** | 100% | `loop.sh`, `loop-with-analytics.sh`, `compare-analytics.sh` are v2-compliant. |
 | **Documentation** | 100% | All READMEs, SETUP guides, ROUTER_SETUP.md are v2-compliant. |
 
 **Target Architecture** (v2):
 ```
 Client -> WireGuard VPN (OpenWrt Router) -> Firewall -> Ollama (192.168.100.10:11434)
-```
-
-**v1 Architecture** (to be eliminated from scripts):
-```
-Client -> Tailscale -> HAProxy (100.x.x.x:11434) -> Ollama (127.0.0.1:11434)
 ```
 
 ---
@@ -44,128 +39,100 @@ P1 and P2 are independent and can be executed in parallel. They share no code an
 
 ---
 
-## P1: Server Scripts -- Rewrite for v2
+## P1: Server Scripts — Rewrite for v2
 
 **Spec authority**: `server/specs/SCRIPTS.md`
 
-### P1a: `server/scripts/install.sh` (751 lines -- complete rewrite)
+### P1a: `server/scripts/install.sh` (751 lines — complete rewrite)
 
-**REMOVE** (~380 lines of v1 code):
-- Lines 95-227: Tailscale install/connect workflow (~133 lines)
-- Lines 352-624: HAProxy install/config (~273 lines)
-- Lines 626-698: Tailscale ACL instructions (~72 lines)
-- Line 284: `OLLAMA_HOST=127.0.0.1` binding
-- Lines 700-751: v1 final summary referencing Tailscale/HAProxy
+- **Remove** Tailscale install/connect workflow (lines 95-227, ~133 lines)
+- **Remove** HAProxy install/config (lines 352-624, ~273 lines)
+- **Remove** Tailscale ACL instructions (lines 626-698, ~72 lines)
+- **Remove** v1 final summary referencing Tailscale/HAProxy (lines 700-751)
+- **Remove** `OLLAMA_HOST=127.0.0.1` binding (line 284)
+- **Keep** helpers, system validation, Ollama install, LaunchAgent lifecycle, health check (~300 lines)
+- **Modify** plist `OLLAMA_HOST` to `192.168.100.10` (or `0.0.0.0`)
+- **Modify** all health check and self-test URLs from `localhost` to DMZ IP (or auto-detect from plist)
+- **Add** router setup check prompt (reference `ROUTER_SETUP.md`)
+- **Add** DMZ network config prompts (subnet default `192.168.100.0/24`, IP default `192.168.100.10`)
+- **Add** IP format and subnet membership validation
+- **Add** static IP config via `sudo networksetup -setmanual "Ethernet" ...`
+- **Add** interface detection via `networksetup -listallhardwareports`
+- **Add** DNS config (router primary, public backup)
+- **Add** binding verification via `lsof -i :11434`
+- **Add** router connectivity test via `ping -c 3 192.168.100.1`
+- **Add** optional model pre-pull prompt
+- **Add** v2 final summary (DMZ IP, auto-start, router connectivity, troubleshooting)
 
-**KEEP** (~300 lines, v2-compatible):
-- Lines 1-52: Helpers (colors, error handling, cleanup)
-- Lines 54-94: macOS 14+ / Apple Silicon / Homebrew validation
-- Lines 229-248: Ollama install via Homebrew
-- Lines 250-308: LaunchAgent lifecycle (stop existing, create plist, bootstrap)
-- Lines 310-350: Health check retry loop, process ownership check
+### P1b: `server/scripts/uninstall.sh` (210 lines — moderate edit)
 
-**MODIFY**:
-- Plist `OLLAMA_HOST`: `127.0.0.1` -> `192.168.100.10` (or `0.0.0.0`)
-- Health check URLs: `localhost` -> DMZ IP throughout
-- Self-test URL: `localhost` -> `192.168.100.10`
+- **Remove** HAProxy cleanup section (lines 92-155, service stop, plist, config dir, logs)
+- **Remove** "Tailscale" from preserved items list (line 161)
+- **Remove** "HAProxy binary" from preserved items list (line 163)
+- **Remove** Tailscale/HAProxy uninstall instructions (lines 200-206)
+- **Keep** Ollama service stop, plist removal, log cleanup, model preservation (~146 lines)
+- **Add** optional static IP → DHCP revert prompt (`sudo networksetup -setdhcp "Ethernet"`)
+- **Add** router config cleanup reminder (remove WireGuard peer, DMZ rules; reference `ROUTER_SETUP.md`)
 
-**ADD** (~200 lines per spec):
-- Router setup check prompt (reference `ROUTER_SETUP.md`, abort if not done)
-- DMZ network config prompts (subnet default `192.168.100.0/24`, IP default `192.168.100.10`)
-- IP format and subnet membership validation
-- Static IP config: `sudo networksetup -setmanual "Ethernet" ...`
-- Interface detection: `networksetup -listallhardwareports`
-- DNS config (router primary, public backup)
-- Binding verification: `lsof -i :11434` (should show DMZ IP or `*:11434`)
-- Router connectivity: `ping -c 3 192.168.100.1`
-- Optional model pre-pull prompt
-- v2 final summary (DMZ IP, auto-start, router connectivity, what's next, security notes, troubleshooting)
+### P1c: `server/scripts/test.sh` (1089 lines — substantial edit)
 
-### P1b: `server/scripts/uninstall.sh` (210 lines -- moderate edit)
+- **Remove** Test 18: loopback binding check expecting `127.0.0.1` (lines 853-872)
+- **Remove** Test 19: localhost access test (lines 874-880)
+- **Remove** Test 20: Tailscale IP access test (lines 882-897)
+- **Remove** Tests 21-30: entire HAProxy test section (lines 900-1058, ~158 lines)
+- **Fix** test numbering conflict: Anthropic tests currently numbered 21-26 overlap with HAProxy tests 21-30
+- **Fix** `TOTAL_TESTS=36` to match actual test count after v2 migration
+- **Modify** Test 17: `OLLAMA_HOST` plist check to accept `192.168.100.10` or `0.0.0.0` (not `127.0.0.1`)
+- **Modify** all API test URLs from `localhost` to DMZ IP (or auto-detect from plist `OLLAMA_HOST` value)
+- **Modify** "What's Next" section to reference `ROUTER_SETUP.md`/WireGuard instead of Tailscale
+- **Add** network configuration tests: static IP configured, IP matches DMZ, router connectivity, DNS, internet, LAN isolation
+- **Add** DMZ IP connectivity test: `curl http://192.168.100.10:11434/v1/models`
+- **Add** binding verification: `lsof -i :11434` shows DMZ IP or `0.0.0.0`
+- **Add** manual checklist display (VPN client, router SSH, internet — not automated)
 
-**REMOVE** (~65 lines):
-- Lines 92-155: HAProxy cleanup section (service stop, plist, config dir, logs)
-- Line 161: "Tailscale" in preserved items list
-- Line 163: "HAProxy binary" in preserved items list
-- Lines 200-206: Tailscale/HAProxy uninstall instructions
+### P1d: `server/scripts/warm-models.sh` — localhost fix
 
-**KEEP** (~146 lines):
-- Ollama service stop, plist removal, log cleanup, model preservation
-
-**ADD** (~20 lines):
-- Optional static IP -> DHCP revert: prompt, `sudo networksetup -setdhcp "Ethernet"`
-- Router config cleanup reminder (remove WireGuard peer, DMZ rules; reference `ROUTER_SETUP.md`)
-
-### P1c: `server/scripts/test.sh` (1089 lines -- substantial edit)
-
-**REMOVE** (~170 lines):
-- Lines 853-872: Test 18 (loopback binding check expecting `127.0.0.1`)
-- Lines 874-880: Test 19 (localhost access test)
-- Lines 882-897: Test 20 (Tailscale IP access test)
-- Lines 900-1058: Tests 21-30 (entire HAProxy test section, 10 tests)
-
-**MODIFY**:
-- Test 17 (lines 840-848): `OLLAMA_HOST` plist check -- accept `192.168.100.10` or `0.0.0.0` (not `127.0.0.1`)
-- "What's Next" section (lines 1082-1088): reference `ROUTER_SETUP.md`/WireGuard instead of Tailscale
-
-**ADD** (~6 new automated tests + manual checklist):
-- **Network Configuration Tests**: static IP configured, IP matches DMZ, router connectivity (`ping`), DNS resolution, outbound internet, LAN isolation (should fail)
-- **DMZ IP Connectivity**: `curl http://192.168.100.10:11434/v1/models`
-- **Binding Verification**: `lsof -i :11434` shows DMZ IP or `0.0.0.0`
-- **Router Integration**: manual checklist display (VPN client, router SSH, internet -- not automated)
-- Update `TOTAL_TESTS` to reflect new count (~31 automated tests)
+- **Modify** lines 56, 95: `localhost:11434` → auto-detect from `OLLAMA_HOST` env var or plist, fallback to `localhost`
+- This ensures the script works with both `OLLAMA_HOST=192.168.100.10` and `OLLAMA_HOST=0.0.0.0`
 
 ---
 
-## P2: Client Scripts -- Update VPN References
+## P2: Client Scripts — Tailscale → WireGuard
 
 **Spec authority**: `client/specs/SCRIPTS.md`
 
-### P2a: `client/scripts/install.sh` (617 lines -- substantial rewrite)
+### P2a: `client/scripts/install.sh` (617 lines — substantial rewrite)
 
-**REMOVE** (~129 lines):
-- Lines 152-280: Entire Tailscale section (GUI check, install, connection flow, IP detection)
+- **Remove** entire Tailscale section: GUI check, install, connection flow, IP detection (lines 152-280, ~129 lines)
+- **Modify** hostname prompt default from `self-sovereign-ollama` → `192.168.100.10` (line 286-291)
+- **Modify** error messages referencing Tailscale → WireGuard VPN (lines 558, 607)
+- **Add** WireGuard install: `brew install wireguard-tools`
+- **Add** keypair generation: `wg genkey | tee privatekey | wg pubkey > publickey`
+- **Add** key storage in `~/.ai-client/wireguard/` with `chmod 600` on private key
+- **Add** public key display with instructions to send to router admin
+- **Add** server IP prompt (default `192.168.100.10`)
+- **Add** VPN server pubkey/endpoint prompts
+- **Add** WireGuard config file generation (`~/.ai-client/wireguard/wg0.conf`)
+- **Add** import instructions for WireGuard app or `wg-quick`
+- **Add** VPN connection confirmation before connectivity test
+- **Add** updated final summary (display pubkey, remind to send to admin, remind to connect VPN)
 
-**MODIFY** (~50 lines):
-- Lines 4-5, 53: project name/branding
-- Lines 286-291: hostname prompt default `self-sovereign-ollama` -> `192.168.100.10`
-- Lines 312, 360: env template comments
-- Line 540: GitHub URL
-- Lines 558, 607: error messages referencing Tailscale -> WireGuard VPN
+### P2b: `client/scripts/uninstall.sh` (156 lines — minor edit)
 
-**ADD** (~130 lines per spec):
-- WireGuard install: `brew install wireguard-tools`
-- Keypair generation: `wg genkey | tee privatekey | wg pubkey > publickey`
-- Key storage in `~/.ai-client/wireguard/` with `chmod 600` on private key
-- Public key display with instructions for router admin
-- Server IP prompt (default `192.168.100.10`)
-- VPN server pubkey/endpoint prompts
-- WireGuard config file generation (`~/.ai-client/wireguard/wg0.conf`)
-- Import instructions for WireGuard app or `wg-quick`
-- VPN connection confirmation before connectivity test
-- Updated final summary (display pubkey, remind to send to admin, remind to connect VPN)
+- **Change** line 6: "Leaves Tailscale" → "Leaves WireGuard"
+- **Change** line 142: `echo "  - Tailscale"` → `echo "  - WireGuard"`
+- **Add** display public key (from `~/.ai-client/wireguard/publickey`) before deletion
+- **Add** WireGuard config cleanup (remove `~/.ai-client/wireguard/` contents)
+- **Add** optional `brew uninstall wireguard-tools` prompt
+- **Add** reminder to have router admin remove VPN peer (with public key displayed)
 
-### P2b: `client/scripts/uninstall.sh` (156 lines -- minor edit)
+### P2c: `client/scripts/test.sh` (1420 lines — moderate edit)
 
-**CHANGE** (2 lines):
-- Line 6: "Leaves Tailscale" -> "Leaves WireGuard"
-- Line 142: `echo "  - Tailscale"` -> `echo "  - WireGuard"`
-
-**ADD** (~15 lines):
-- Display public key (if available) before deletion
-- WireGuard config cleanup (remove `~/.ai-client/wireguard/` contents)
-- Optional `brew uninstall wireguard-tools` prompt
-- Reminder to have router admin remove VPN peer
-
-### P2c: `client/scripts/test.sh` (1420 lines -- moderate edit)
-
-**CHANGE** (~20 lines):
-- Test 8 (lines 248-254): `command -v tailscale` -> `command -v wg` or `brew list wireguard-tools`
-- Test 9 (lines 256-267): `tailscale status`/`tailscale ip -4` -> WireGuard interface check (`wg show` or active `utun` interface)
-- Error messages (lines 558, 607, 641, 1403, 1413): "Tailscale" -> "WireGuard VPN"/"VPN"
-- Test 14 connectivity context: VPN connection check before server tests
-
-**KEEP**: All other tests (environment config, dependencies, API contract, Aider, Claude Code, version management -- all v2-compliant)
+- **Change** Test 8 (lines 248-254): `command -v tailscale` → `command -v wg` or `brew list wireguard-tools`
+- **Change** Test 9 (lines 256-267): `tailscale status`/`tailscale ip -4` → WireGuard interface check (`wg show` or active `utun`)
+- **Change** Test 14 (line 333): VPN connectivity check from Tailscale to WireGuard
+- **Change** error messages (lines 558, 607, 641, 1403, 1413): "Tailscale" → "WireGuard VPN"/"VPN"
+- **Keep** all other tests (environment config, dependencies, API contract, Aider, Claude Code, version management — all v2-compliant)
 
 ---
 
@@ -175,10 +142,10 @@ P1 and P2 are independent and can be executed in parallel. They share no code an
 **Location**: Apple Silicon hardware + OpenWrt router
 
 - [ ] `server/scripts/install.sh` completes without errors on target hardware
-- [ ] `server/scripts/test.sh --verbose` -- all automated tests pass
+- [ ] `server/scripts/test.sh --verbose` — all automated tests pass
 - [ ] `server/scripts/uninstall.sh` cleanly removes configuration
 - [ ] `client/scripts/install.sh` completes without errors
-- [ ] `client/scripts/test.sh --verbose` -- all automated tests pass
+- [ ] `client/scripts/test.sh --verbose` — all automated tests pass
 - [ ] `client/scripts/uninstall.sh` cleanly removes configuration
 - [ ] WireGuard VPN: client connects through router tunnel to server
 - [ ] DMZ isolation: server cannot reach LAN (`ping 192.168.1.x` fails)
