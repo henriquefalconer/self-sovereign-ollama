@@ -18,7 +18,7 @@
 | **Root Analytics** (3 scripts) | 100% | `loop.sh`, `loop-with-analytics.sh`, `compare-analytics.sh`. |
 | **Client Version Mgmt** (3 scripts) | 100% | `check-compatibility.sh`, `pin-versions.sh`, `downgrade-claude.sh`. |
 | **Client Config** | 100% | `env.template` — uses static DMZ IP `192.168.100.10`, correct env vars. |
-| **Server Scripts** (4 files) | ~65% | 3 of 4 complete (warm-models.sh, uninstall.sh, test.sh). 1 remaining (install.sh). |
+| **Server Scripts** (4 files) | 100% | All 4 complete (install.sh, uninstall.sh, warm-models.sh, test.sh). ✅ |
 | **Client Scripts** (3 files) | 100% | All 3 complete (install.sh, test.sh, uninstall.sh). ✅ |
 
 **Target Architecture** (v2):
@@ -41,43 +41,48 @@ P1 and P2 share no code and communicate only via `client/specs/API_CONTRACT.md`.
 
 ---
 
-## P1: Server Scripts — v2 Migration
+## P1: Server Scripts — v2 Migration ✅ COMPLETE
+
+**Status**: All 4 server scripts migrated to v2 architecture (2026-02-12)
 
 **Spec authority**: `server/specs/SCRIPTS.md`
 
-### P1a: `server/scripts/install.sh` (751 lines — complete rewrite)
+### P1a: `server/scripts/install.sh` — v2 migration ✅ COMPLETE
 
-~300 lines of reusable code (helpers, system validation, Ollama install, LaunchAgent lifecycle); ~480 lines of v1 code to remove; ~250 lines of new v2 code to add.
+**Status**: Completed 2026-02-12
 
-**Remove:**
-- Tailscale install/connect workflow (lines 95-227)
-- HAProxy install/config (lines 352-624)
-- Tailscale ACL instructions (lines 626-698)
-- v1 final summary (lines 700-751)
-- `OLLAMA_HOST=127.0.0.1` binding (line 284)
+**Removed (~480 lines):**
+- ✅ Tailscale install/connect workflow (lines 95-227, ~133 lines)
+- ✅ HAProxy install/config (lines 352-624, ~273 lines)
+- ✅ Tailscale ACL instructions (lines 626-698, ~73 lines)
+- ✅ v1 final summary (lines 700-751)
+- ✅ `OLLAMA_HOST=127.0.0.1` loopback binding
 
-**Keep (with URL modifications):**
-- Helpers, color output, banner (lines 1-52)
-- System validation: macOS 14+, Apple Silicon, shell, Homebrew (lines 54-93)
-- Ollama install via Homebrew (lines 229-248)
-- Stop existing services (lines 250-262)
-- LaunchAgent plist creation and loading (lines 264-308) — change `OLLAMA_HOST`
-- Service verification retry loop (lines 310-329) — change URL
-- Process ownership check (lines 331-342)
-- Self-test API call (lines 344-350) — change URL
+**Preserved (~300 lines with modifications):**
+- ✅ Helpers, color output, banner
+- ✅ System validation: macOS 14+, Apple Silicon, shell, Homebrew
+- ✅ Ollama install via Homebrew
+- ✅ Stop existing services
+- ✅ LaunchAgent plist creation and loading — updated to use DMZ IP or 0.0.0.0
+- ✅ Service verification retry loop — updated to use SERVER_IP
+- ✅ Process ownership check
+- ✅ Self-test API call — updated to use SERVER_IP
 
-**Add:**
-- Router setup prerequisite prompt (reference `ROUTER_SETUP.md`)
-- DMZ network config prompts (subnet default `192.168.100.0/24`, IP default `192.168.100.10`)
-- IP format and subnet membership validation
-- Static IP config via `sudo networksetup -setmanual "Ethernet" ...`
-- Interface detection via `networksetup -listallhardwareports`
-- DNS config (router primary, public backup)
-- Plist `OLLAMA_HOST=192.168.100.10` (or `0.0.0.0`)
-- Binding verification via `lsof -i :11434`
-- Router connectivity test via `ping -c 3 192.168.100.1`
-- Optional model pre-pull prompt
-- v2 final summary (DMZ IP, auto-start, router connectivity, troubleshooting)
+**Added (~250 lines):**
+- ✅ Router setup prerequisite prompt (reference `ROUTER_SETUP.md`)
+- ✅ DMZ network config prompts (subnet default `192.168.100.0/24`, IP default `192.168.100.10`)
+- ✅ IP format and subnet membership validation
+- ✅ Static IP config via `sudo networksetup -setmanual "Ethernet" ...`
+- ✅ Interface detection via `networksetup -listallhardwareports`
+- ✅ DNS config (router primary, public backup)
+- ✅ Binding choice prompt: DMZ-only vs all interfaces
+- ✅ Plist `OLLAMA_HOST` set to `$SERVER_IP` or `0.0.0.0`
+- ✅ Binding verification via `lsof -i :11434`
+- ✅ Router connectivity test via `ping -c 3 $GATEWAY`
+- ✅ Optional model pre-pull prompt
+- ✅ v2 final summary (DMZ IP, auto-start, router connectivity, troubleshooting)
+
+**Result**: 752 lines → 426 lines (43% reduction, 326 lines removed)
 
 ### P1b: `server/scripts/uninstall.sh` — v2 migration ✅ COMPLETE
 
