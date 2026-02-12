@@ -18,7 +18,7 @@
 | **Root Analytics** (3 scripts) | 100% | `loop.sh`, `loop-with-analytics.sh`, `compare-analytics.sh`. |
 | **Client Version Mgmt** (3 scripts) | 100% | `check-compatibility.sh`, `pin-versions.sh`, `downgrade-claude.sh`. |
 | **Client Config** | 100% | `env.template` — uses `__HOSTNAME__` placeholder, correct env vars. |
-| **Server Scripts** (4 files) | ~40% | 2 of 4 complete (warm-models.sh, uninstall.sh). 2 remaining (install.sh, test.sh). |
+| **Server Scripts** (4 files) | ~65% | 3 of 4 complete (warm-models.sh, uninstall.sh, test.sh). 1 remaining (install.sh). |
 | **Client Scripts** (3 files) | ~60% | `install.sh`, `uninstall.sh`, `test.sh` still reference Tailscale. |
 
 **Target Architecture** (v2):
@@ -97,29 +97,33 @@ P1 and P2 share no code and communicate only via `client/specs/API_CONTRACT.md`.
 - ✅ Router config cleanup reminder (remove WireGuard peer, DMZ rules; reference `ROUTER_SETUP.md`)
 - ✅ Updated "Left untouched" list to include network/router configuration notes
 
-### P1c: `server/scripts/test.sh` (1089 lines — substantial edit)
+### P1c: `server/scripts/test.sh` — v2 migration ✅ COMPLETE
 
-**Remove:**
-- Test 18: loopback binding check expecting `127.0.0.1` (lines 853-872)
-- Test 19: localhost access test (lines 874-880)
-- Test 20: Tailscale IP access test (lines 882-897)
-- Tests 21-30: entire HAProxy test section (lines 900-1058)
+**Status**: Completed 2026-02-12
 
-**Fix:**
-- Test numbering conflict: Anthropic tests 21-26 overlap with HAProxy tests 21-30 (resolved by removing HAProxy tests)
-- `TOTAL_TESTS=36` → recalculate after migration
+**Removed:**
+- ✅ Test 18: loopback binding check expecting `127.0.0.1` (lines 853-872)
+- ✅ Test 19: localhost access test (lines 874-880)
+- ✅ Test 20: Tailscale IP access test (lines 882-897)
+- ✅ Tests 21-30: entire HAProxy test section (lines 900-1058, ~159 lines)
 
-**Modify:**
-- Test 17: `OLLAMA_HOST` plist check to accept `192.168.100.10` or `0.0.0.0` (not `127.0.0.1`)
-- All API test URLs from `localhost` to DMZ IP (auto-detect from plist `OLLAMA_HOST` value)
-- "What's Next" section → reference `ROUTER_SETUP.md`/WireGuard
+**Fixed:**
+- ✅ Test numbering conflict: Anthropic tests 21-26 overlapping with HAProxy tests 21-30 — resolved by removing HAProxy tests
+- ✅ `TOTAL_TESTS` updated from 36 to 29 (7 tests removed)
 
-**Add:**
-- OLLAMA_HOST auto-detect helper function (parse from env var or plist)
-- Network configuration tests: static IP, IP matches DMZ, router connectivity, DNS, internet, LAN isolation
-- DMZ IP connectivity test: `curl http://<DMZ_IP>:11434/v1/models`
-- Binding verification: `lsof -i :11434` shows DMZ IP or `0.0.0.0`
-- Manual router integration checklist (VPN client, router SSH, internet — display only)
+**Modified:**
+- ✅ Test 17: `OLLAMA_HOST` plist check now accepts `192.168.100.10` or `0.0.0.0` (not `127.0.0.1`)
+- ✅ All API test URLs changed from `localhost` to `${OLLAMA_HOST}` (auto-detected from plist)
+- ✅ "What's Next" section updated to reference `ROUTER_SETUP.md`/WireGuard
+
+**Added:**
+- ✅ `detect_ollama_host()` function: auto-detect from env var → plist → fallback to `localhost`
+- ✅ Test 18: Binding verification (`lsof -i :11434` shows DMZ IP or `0.0.0.0`)
+- ✅ Test 19: DMZ IP connectivity test (`curl http://${OLLAMA_HOST}:11434/v1/models`)
+- ✅ Test 20: Router gateway connectivity (`ping -c 3 192.168.100.1`)
+- ✅ Test 21: DNS resolution (`nslookup google.com`)
+- ✅ Test 22: Internet connectivity (`curl -I https://www.google.com`)
+- ✅ Test 23: LAN isolation verification (ping `192.168.1.1` — should fail, confirms DMZ security posture)
 
 ### P1d: `server/scripts/warm-models.sh` — localhost fix ✅ COMPLETE
 

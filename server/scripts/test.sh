@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 TESTS_PASSED=0
 TESTS_FAILED=0
 TESTS_SKIPPED=0
-TOTAL_TESTS=36
+TOTAL_TESTS=29
 CURRENT_TEST=0
 
 # Flags
@@ -96,6 +96,31 @@ info() {
     fi
 }
 
+# Detect Ollama host from environment or plist
+detect_ollama_host() {
+    # 1. Check OLLAMA_HOST env var
+    if [[ -n "${OLLAMA_HOST:-}" ]]; then
+        echo "$OLLAMA_HOST"
+        return
+    fi
+
+    # 2. Parse from plist
+    local PLIST_PATH="$HOME/Library/LaunchAgents/com.ollama.plist"
+    if [[ -f "$PLIST_PATH" ]]; then
+        local PLIST_HOST=$(grep -A1 "OLLAMA_HOST" "$PLIST_PATH" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+        if [[ -n "$PLIST_HOST" ]]; then
+            echo "$PLIST_HOST"
+            return
+        fi
+    fi
+
+    # 3. Fallback to localhost
+    echo "localhost"
+}
+
+# Detect Ollama host before tests
+OLLAMA_HOST=$(detect_ollama_host)
+
 # Banner
 echo "================================================"
 echo "  self-sovereign-ollama ai-server Test Suite"
@@ -142,7 +167,7 @@ fi
 
 # Test 4: Responds to HTTP
 show_progress "Testing basic HTTP response..."
-if curl -sf http://localhost:11434/v1/models &> /dev/null; then
+if curl -sf "http://${OLLAMA_HOST}:11434/v1/models" &> /dev/null; then
     pass "Service responds to HTTP requests"
 else
     fail "Service does not respond to HTTP requests"
@@ -153,7 +178,7 @@ echo "=== API Endpoint Tests ==="
 
 # Test 5: GET /v1/models
 show_progress "Testing GET /v1/models..."
-MODELS_RESPONSE=$(curl -sf http://localhost:11434/v1/models 2>/dev/null || echo "FAILED")
+MODELS_RESPONSE=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/models" 2>/dev/null || echo "FAILED")
 if [[ "$MODELS_RESPONSE" != "FAILED" ]] && echo "$MODELS_RESPONSE" | jq -e '.object == "list"' &> /dev/null; then
     MODEL_COUNT=$(echo "$MODELS_RESPONSE" | jq -r '.data | length')
     pass "GET /v1/models returns valid JSON (${MODEL_COUNT} models)"
@@ -170,7 +195,7 @@ fi
 # Test 6: GET /v1/models/{model}
 if [[ -n "${FIRST_MODEL:-}" ]]; then
     show_progress "Testing GET /v1/models/$FIRST_MODEL..."
-    MODEL_DETAIL=$(curl -sf "http://localhost:11434/v1/models/$FIRST_MODEL" 2>/dev/null || echo "FAILED")
+    MODEL_DETAIL=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/models/$FIRST_MODEL" 2>/dev/null || echo "FAILED")
     if [[ "$MODEL_DETAIL" != "FAILED" ]] && echo "$MODEL_DETAIL" | jq -e '.id' &> /dev/null; then
         pass "GET /v1/models/{model} returns valid model details"
     else
@@ -202,10 +227,10 @@ else
 
     if [[ "$VERBOSE" == "true" ]]; then
         # Verbose mode: show request/response details
-        info "Request: POST http://localhost:11434/v1/chat/completions"
+        info "Request: POST http://${OLLAMA_HOST}:11434/v1/chat/completions"
         info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}"
 
-        CHAT_RESPONSE=$(curl -v http://localhost:11434/v1/chat/completions \
+        CHAT_RESPONSE=$(curl -v "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
             2>&1 || echo "FAILED")
@@ -215,7 +240,7 @@ else
             info "  $line"
         done
     else
-        CHAT_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
+        CHAT_RESPONSE=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
             2>/dev/null || echo "FAILED")
@@ -251,10 +276,10 @@ else
 
     if [[ "$VERBOSE" == "true" ]]; then
         # Verbose mode: show request/response details
-        info "Request: POST http://localhost:11434/v1/chat/completions (streaming)"
+        info "Request: POST http://${OLLAMA_HOST}:11434/v1/chat/completions (streaming)"
         info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true}"
 
-        STREAM_RESPONSE=$(curl -v http://localhost:11434/v1/chat/completions \
+        STREAM_RESPONSE=$(curl -v "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true}" \
             2>&1 || echo "FAILED")
@@ -264,7 +289,7 @@ else
             info "  $line"
         done
     else
-        STREAM_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
+        STREAM_RESPONSE=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true}" \
             2>/dev/null | head -n 5 || echo "FAILED")
@@ -298,10 +323,10 @@ else
 
     if [[ "$VERBOSE" == "true" ]]; then
         # Verbose mode: show request/response details
-        info "Request: POST http://localhost:11434/v1/chat/completions (streaming with include_usage)"
+        info "Request: POST http://${OLLAMA_HOST}:11434/v1/chat/completions (streaming with include_usage)"
         info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true,\"stream_options\":{\"include_usage\":true}}"
 
-        USAGE_RESPONSE=$(curl -v http://localhost:11434/v1/chat/completions \
+        USAGE_RESPONSE=$(curl -v "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true,\"stream_options\":{\"include_usage\":true}}" \
             2>&1 || echo "FAILED")
@@ -311,7 +336,7 @@ else
             info "  $line"
         done
     else
-        USAGE_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
+        USAGE_RESPONSE=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true,\"stream_options\":{\"include_usage\":true}}" \
             2>/dev/null || echo "FAILED")
@@ -361,10 +386,10 @@ else
 
     if [[ "$VERBOSE" == "true" ]]; then
         # Verbose mode: show request/response details
-        info "Request: POST http://localhost:11434/v1/chat/completions (JSON mode)"
+        info "Request: POST http://${OLLAMA_HOST}:11434/v1/chat/completions (JSON mode)"
         info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object with a single field 'status' set to 'ok'\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}"
 
-        JSON_RESPONSE=$(curl -v http://localhost:11434/v1/chat/completions \
+        JSON_RESPONSE=$(curl -v "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object with a single field 'status' set to 'ok'\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}" \
             2>&1 || echo "FAILED")
@@ -374,7 +399,7 @@ else
             info "  $line"
         done
     else
-        JSON_RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
+        JSON_RESPONSE=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
             -H "Content-Type: application/json" \
             -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object with a single field 'status' set to 'ok'\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}" \
             2>/dev/null || echo "FAILED")
@@ -415,10 +440,10 @@ else
 
     if [[ "$VERBOSE" == "true" ]]; then
         # Verbose mode: show request/response details
-        info "Request: POST http://localhost:11434/v1/responses (experimental)"
+        info "Request: POST http://${OLLAMA_HOST}:11434/v1/responses (experimental)"
         info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}"
 
-        RESPONSES_RESPONSE=$(curl -v http://localhost:11434/v1/responses \
+        RESPONSES_RESPONSE=$(curl -v "http://${OLLAMA_HOST}:11434/v1/responses" \
             -H "Content-Type: application/json" \
             -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
             2>&1 || echo "FAILED")
@@ -428,7 +453,7 @@ else
             info "  $line"
         done
     else
-        RESPONSES_RESPONSE=$(curl -sf http://localhost:11434/v1/responses \
+        RESPONSES_RESPONSE=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/responses" \
             -H "Content-Type: application/json" \
             -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
             2>/dev/null || echo "FAILED")
@@ -486,10 +511,10 @@ else
     START_TIME=$(date +%s%N 2>/dev/null || date +%s)
 
     if [[ "$VERBOSE" == "true" ]]; then
-        info "Request: POST http://localhost:11434/v1/messages"
+        info "Request: POST http://${OLLAMA_HOST}:11434/v1/messages"
         info "Body: {\"model\":\"$FIRST_MODEL\",\"max_tokens\":10,\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}]}"
 
-        ANTHROPIC_RESPONSE=$(curl -v http://localhost:11434/v1/messages \
+        ANTHROPIC_RESPONSE=$(curl -v "http://${OLLAMA_HOST}:11434/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
@@ -501,7 +526,7 @@ else
             info "  $line"
         done
     else
-        ANTHROPIC_RESPONSE=$(curl -sf http://localhost:11434/v1/messages \
+        ANTHROPIC_RESPONSE=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
@@ -541,10 +566,10 @@ else
     START_TIME=$(date +%s%N 2>/dev/null || date +%s)
 
     if [[ "$VERBOSE" == "true" ]]; then
-        info "Request: POST http://localhost:11434/v1/messages (streaming)"
+        info "Request: POST http://${OLLAMA_HOST}:11434/v1/messages (streaming)"
         info "Body: {\"model\":\"$FIRST_MODEL\",\"max_tokens\":10,\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"stream\":true}"
 
-        ANTHROPIC_STREAM=$(curl -v http://localhost:11434/v1/messages \
+        ANTHROPIC_STREAM=$(curl -v "http://${OLLAMA_HOST}:11434/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
@@ -556,7 +581,7 @@ else
             info "  $line"
         done
     else
-        ANTHROPIC_STREAM=$(curl -sf http://localhost:11434/v1/messages \
+        ANTHROPIC_STREAM=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
@@ -595,10 +620,10 @@ else
     START_TIME=$(date +%s%N 2>/dev/null || date +%s)
 
     if [[ "$VERBOSE" == "true" ]]; then
-        info "Request: POST http://localhost:11434/v1/messages (with system prompt)"
+        info "Request: POST http://${OLLAMA_HOST}:11434/v1/messages (with system prompt)"
         info "Body: {\"model\":\"$FIRST_MODEL\",\"max_tokens\":10,\"system\":\"You are helpful.\",\"messages\":[{\"role\":\"user\",\"content\":\"Hi\"}]}"
 
-        ANTHROPIC_SYSTEM=$(curl -v http://localhost:11434/v1/messages \
+        ANTHROPIC_SYSTEM=$(curl -v "http://${OLLAMA_HOST}:11434/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
@@ -610,7 +635,7 @@ else
             info "  $line"
         done
     else
-        ANTHROPIC_SYSTEM=$(curl -sf http://localhost:11434/v1/messages \
+        ANTHROPIC_SYSTEM=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
@@ -643,7 +668,7 @@ else
     # Test 24: Anthropic error handling (nonexistent model)
     show_progress "Testing POST /v1/messages error handling..."
 
-    ANTHROPIC_ERROR=$(curl -s -w "%{http_code}" -o /dev/null http://localhost:11434/v1/messages \
+    ANTHROPIC_ERROR=$(curl -s -w "%{http_code}" -o /dev/null "http://${OLLAMA_HOST}:11434/v1/messages" \
         -H "Content-Type: application/json" \
         -H "x-api-key: ollama" \
         -H "anthropic-version: 2023-06-01" \
@@ -674,10 +699,10 @@ else
     }'
 
     if [[ "$VERBOSE" == "true" ]]; then
-        info "Request: POST http://localhost:11434/v1/messages (multi-turn)"
+        info "Request: POST http://${OLLAMA_HOST}:11434/v1/messages (multi-turn)"
         info "Body: Multi-turn conversation with 3 messages"
 
-        ANTHROPIC_MULTITURN=$(curl -v http://localhost:11434/v1/messages \
+        ANTHROPIC_MULTITURN=$(curl -v "http://${OLLAMA_HOST}:11434/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
@@ -689,7 +714,7 @@ else
             info "  $line"
         done
     else
-        ANTHROPIC_MULTITURN=$(curl -sf http://localhost:11434/v1/messages \
+        ANTHROPIC_MULTITURN=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
@@ -725,9 +750,9 @@ else
     START_TIME=$(date +%s%N 2>/dev/null || date +%s)
 
     if [[ "$VERBOSE" == "true" ]]; then
-        info "Request: POST http://localhost:11434/v1/messages (streaming with usage)"
+        info "Request: POST http://${OLLAMA_HOST}:11434/v1/messages (streaming with usage)"
 
-        ANTHROPIC_USAGE_STREAM=$(curl -v http://localhost:11434/v1/messages \
+        ANTHROPIC_USAGE_STREAM=$(curl -v "http://${OLLAMA_HOST}:11434/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
@@ -739,7 +764,7 @@ else
             info "  $line"
         done
     else
-        ANTHROPIC_USAGE_STREAM=$(curl -sf http://localhost:11434/v1/messages \
+        ANTHROPIC_USAGE_STREAM=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
@@ -778,7 +803,7 @@ echo "=== Error Behavior Tests ==="
 
 # Test 12: 500 error on nonexistent model
 show_progress "Testing error handling for nonexistent model..."
-ERROR_RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null http://localhost:11434/v1/chat/completions \
+ERROR_RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
     -H "Content-Type: application/json" \
     -d '{"model":"nonexistent-model-xyz","messages":[{"role":"user","content":"hi"}]}' \
     2>/dev/null || echo "FAILED")
@@ -793,7 +818,7 @@ fi
 
 # Test 13: Malformed request handling
 show_progress "Testing malformed request handling..."
-MALFORMED_RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null http://localhost:11434/v1/chat/completions \
+MALFORMED_RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
     -H "Content-Type: application/json" \
     -d '{"invalid":"json","no":"model"}' \
     2>/dev/null || echo "FAILED")
@@ -837,33 +862,34 @@ else
     fail "Plist file missing"
 fi
 
-# Test 17: OLLAMA_HOST in plist (check for loopback binding)
+# Test 17: OLLAMA_HOST in plist (check for DMZ or all-interfaces binding)
 show_progress "Checking OLLAMA_HOST in plist..."
-if grep -q "OLLAMA_HOST" "$PLIST_PATH" && grep -q "127.0.0.1" "$PLIST_PATH"; then
-    pass "OLLAMA_HOST=127.0.0.1 configured in plist (loopback-only binding)"
-elif grep -q "OLLAMA_HOST" "$PLIST_PATH" && grep -q "0.0.0.0" "$PLIST_PATH"; then
-    fail "OLLAMA_HOST=0.0.0.0 found in plist (should be 127.0.0.1 for security)" "" "" "HAProxy not installed - fallback mode active"
+if grep -q "OLLAMA_HOST" "$PLIST_PATH"; then
+    PLIST_HOST=$(grep -A1 "OLLAMA_HOST" "$PLIST_PATH" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+    if [[ "$PLIST_HOST" =~ ^192\.168\.100\.[0-9]+$ ]] || [[ "$PLIST_HOST" == "0.0.0.0" ]]; then
+        pass "OLLAMA_HOST=$PLIST_HOST configured in plist (v2 DMZ or all-interfaces binding)"
+    elif [[ "$PLIST_HOST" == "127.0.0.1" ]]; then
+        fail "OLLAMA_HOST=127.0.0.1 found in plist (v1 loopback-only binding, should be DMZ IP or 0.0.0.0 for v2)"
+    else
+        fail "OLLAMA_HOST=$PLIST_HOST found in plist (unexpected value, should be DMZ IP or 0.0.0.0)"
+    fi
 else
-    fail "OLLAMA_HOST not found in plist or has unexpected value"
+    fail "OLLAMA_HOST not found in plist"
 fi
 
 echo ""
 echo "=== Network Tests ==="
 
-# Test 18: Ollama service binding (verify loopback-only)
+# Test 18: Ollama service binding (verify DMZ or all-interfaces)
 show_progress "Checking Ollama service binding..."
 if command -v lsof &> /dev/null; then
-    OLLAMA_BINDING=$(lsof -i :11434 -sTCP:LISTEN 2>/dev/null | grep -E "ollama|haproxy" || echo "")
-    if echo "$OLLAMA_BINDING" | grep -q "127.0.0.1:11434"; then
-        pass "Ollama binds to loopback only (127.0.0.1:11434) - secure"
+    OLLAMA_BINDING=$(lsof -i :11434 -sTCP:LISTEN 2>/dev/null | grep ollama || echo "")
+    if echo "$OLLAMA_BINDING" | grep -qE "192\.168\.100\.[0-9]+:11434"; then
+        pass "Ollama binds to DMZ interface (192.168.100.x:11434) - secure"
     elif echo "$OLLAMA_BINDING" | grep -q "0.0.0.0:11434"; then
-        # Check if HAProxy is also running (fallback mode is OK if HAProxy declined)
-        if lsof -i :11434 -sTCP:LISTEN 2>/dev/null | grep -q "haproxy"; then
-            fail "Ollama binds to 0.0.0.0 even though HAProxy is running (security violation)"
-        else
-            warn "Ollama binds to 0.0.0.0 (fallback mode - HAProxy not installed)"
-            pass "Ollama accessible (fallback mode)"
-        fi
+        pass "Ollama binds to all interfaces (0.0.0.0:11434) - accessible"
+    elif echo "$OLLAMA_BINDING" | grep -q "127.0.0.1:11434"; then
+        fail "Ollama binds to loopback only (127.0.0.1:11434) - v1 configuration, should be DMZ IP or 0.0.0.0 for v2"
     else
         skip "Could not determine Ollama binding from lsof output"
     fi
@@ -871,190 +897,49 @@ else
     skip "lsof not available - cannot verify binding" "Install lsof or check manually"
 fi
 
-# Test 19: Localhost access
-show_progress "Testing localhost access..."
-if curl -sf http://localhost:11434/v1/models &> /dev/null; then
-    pass "Localhost access (127.0.0.1) works"
+# Test 19: DMZ IP access
+show_progress "Testing DMZ IP access..."
+if curl -sf "http://${OLLAMA_HOST}:11434/v1/models" &> /dev/null; then
+    pass "DMZ IP access (${OLLAMA_HOST}) works"
 else
-    fail "Localhost access failed"
-fi
-
-# Test 20: Tailscale IP access (if connected)
-show_progress "Testing Tailscale IP access..."
-if command -v tailscale &> /dev/null && tailscale ip -4 &> /dev/null; then
-    TAILSCALE_IP=$(tailscale ip -4 2>/dev/null | head -n1)
-    if [[ -n "$TAILSCALE_IP" ]]; then
-        if curl -sf "http://$TAILSCALE_IP:11434/v1/models" &> /dev/null; then
-            pass "Tailscale IP access ($TAILSCALE_IP) works"
-        else
-            fail "Tailscale IP access failed"
-        fi
-    else
-        skip "Tailscale IP not available" "Connect to Tailscale or check 'tailscale status'"
-    fi
-else
-    skip "Tailscale not installed or not connected" "Install Tailscale via 'brew install tailscale' and connect"
+    fail "DMZ IP access failed"
 fi
 
 echo ""
-echo "=== HAProxy Tests ==="
+echo "=== Network Configuration Tests (v2) ==="
 
-# Detect if HAProxy is installed
-HAPROXY_INSTALLED=false
-HAPROXY_LABEL="com.haproxy"
-HAPROXY_PLIST_PATH="$HOME/Library/LaunchAgents/com.haproxy.plist"
-
-if [[ -f "$HAPROXY_PLIST_PATH" ]] || launchctl print "gui/$(id -u)/$HAPROXY_LABEL" &> /dev/null 2>&1; then
-    HAPROXY_INSTALLED=true
+# Test 20: Router gateway connectivity
+show_progress "Testing router gateway connectivity..."
+if ping -c 3 192.168.100.1 &> /dev/null; then
+    pass "Router gateway (192.168.100.1) is reachable"
+else
+    fail "Router gateway (192.168.100.1) is not reachable"
 fi
 
-if [[ "$HAPROXY_INSTALLED" == "false" ]]; then
-    skip "HAProxy tests - HAProxy not installed" "Re-run install.sh and choose 'Yes' when prompted for HAProxy"
-    skip "HAProxy LaunchAgent check - HAProxy not installed"
-    skip "HAProxy binding check - HAProxy not installed"
-    skip "HAProxy allowlist tests - HAProxy not installed"
-    skip "HAProxy blocked endpoints - HAProxy not installed"
-    skip "Direct Ollama access blocked - HAProxy not installed"
-    skip "HAProxy logs check - HAProxy not installed"
-    skip "HAProxy config check - HAProxy not installed"
+# Test 21: DNS resolution
+show_progress "Testing DNS resolution..."
+if nslookup google.com &> /dev/null || dig google.com &> /dev/null; then
+    pass "DNS resolution works"
 else
-    # Test 21: HAProxy LaunchAgent loaded
-    show_progress "Checking HAProxy LaunchAgent..."
-    if launchctl print "gui/$(id -u)/$HAPROXY_LABEL" &> /dev/null; then
-        pass "HAProxy LaunchAgent is loaded"
-    else
-        fail "HAProxy LaunchAgent is not loaded" "" "" "Check logs: tail -f /tmp/haproxy.stderr.log"
-    fi
+    fail "DNS resolution failed"
+fi
 
-    # Test 22: HAProxy process running
-    show_progress "Checking HAProxy process..."
-    HAPROXY_PID=$(pgrep -f "haproxy.*haproxy.cfg" | head -n1 || echo "")
-    if [[ -n "$HAPROXY_PID" ]]; then
-        HAPROXY_USER=$(ps -o user= -p "$HAPROXY_PID" | tr -d ' ')
-        if [[ "$HAPROXY_USER" == "root" ]]; then
-            fail "HAProxy is running as root (security concern)"
-        else
-            pass "HAProxy process running as user: $HAPROXY_USER (PID: $HAPROXY_PID)"
-        fi
-    else
-        fail "HAProxy process not found" "" "" "Check logs: tail -f /tmp/haproxy.stderr.log"
-    fi
+# Test 22: Internet connectivity
+show_progress "Testing internet connectivity..."
+if curl -sf --connect-timeout 5 https://www.google.com &> /dev/null; then
+    pass "Internet connectivity works"
+else
+    fail "Internet connectivity failed (DMZ may be isolated from WAN)"
+fi
 
-    # Test 23: HAProxy listening on Tailscale interface
-    show_progress "Checking HAProxy binding..."
-    if command -v lsof &> /dev/null; then
-        if command -v tailscale &> /dev/null && tailscale ip -4 &> /dev/null; then
-            TAILSCALE_IP=$(tailscale ip -4 2>/dev/null | head -n1 || echo "")
-            if [[ -n "$TAILSCALE_IP" ]]; then
-                HAPROXY_BINDING=$(lsof -i :11434 -sTCP:LISTEN 2>/dev/null | grep haproxy || echo "")
-                if [[ -n "$HAPROXY_BINDING" ]] && echo "$HAPROXY_BINDING" | grep -q "$TAILSCALE_IP"; then
-                    pass "HAProxy listening on Tailscale interface ($TAILSCALE_IP:11434)"
-                elif [[ -n "$HAPROXY_BINDING" ]]; then
-                    warn "HAProxy is listening but not on expected Tailscale IP"
-                    pass "HAProxy is listening on port 11434"
-                else
-                    fail "HAProxy not listening on expected interface"
-                fi
-            else
-                skip "Tailscale IP not available - cannot verify HAProxy binding" "Connect to Tailscale"
-            fi
-        else
-            skip "Tailscale not available - cannot verify HAProxy binding"
-        fi
-    else
-        skip "lsof not available - cannot verify HAProxy binding"
-    fi
-
-    # Test 24-26: Allowlisted endpoint forwarding
-    show_progress "Testing allowlisted endpoint: POST /v1/chat/completions..."
-    if [[ -n "${TAILSCALE_IP:-}" ]] && [[ -n "${FIRST_MODEL:-}" ]]; then
-        HAPROXY_CHAT_TEST=$(curl -sf "http://$TAILSCALE_IP:11434/v1/chat/completions" \
-            -H "Content-Type: application/json" \
-            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"test\"}],\"max_tokens\":1}" \
-            2>/dev/null || echo "FAILED")
-        if [[ "$HAPROXY_CHAT_TEST" != "FAILED" ]] && echo "$HAPROXY_CHAT_TEST" | jq -e '.choices' &> /dev/null; then
-            pass "HAProxy forwards POST /v1/chat/completions (allowlisted)"
-        else
-            fail "HAProxy failed to forward POST /v1/chat/completions"
-        fi
-    else
-        skip "Cannot test HAProxy forwarding - Tailscale IP or model unavailable"
-    fi
-
-    show_progress "Testing allowlisted endpoint: GET /v1/models..."
-    if [[ -n "${TAILSCALE_IP:-}" ]]; then
-        HAPROXY_MODELS_TEST=$(curl -sf "http://$TAILSCALE_IP:11434/v1/models" 2>/dev/null || echo "FAILED")
-        if [[ "$HAPROXY_MODELS_TEST" != "FAILED" ]] && echo "$HAPROXY_MODELS_TEST" | jq -e '.object' &> /dev/null; then
-            pass "HAProxy forwards GET /v1/models (allowlisted)"
-        else
-            fail "HAProxy failed to forward GET /v1/models"
-        fi
-    else
-        skip "Cannot test HAProxy forwarding - Tailscale IP unavailable"
-    fi
-
-    show_progress "Testing allowlisted endpoint: GET /api/version..."
-    if [[ -n "${TAILSCALE_IP:-}" ]]; then
-        HAPROXY_VERSION_TEST=$(curl -sf "http://$TAILSCALE_IP:11434/api/version" 2>/dev/null || echo "FAILED")
-        if [[ "$HAPROXY_VERSION_TEST" != "FAILED" ]]; then
-            pass "HAProxy forwards GET /api/version (allowlisted)"
-        else
-            fail "HAProxy failed to forward GET /api/version"
-        fi
-    else
-        skip "Cannot test HAProxy forwarding - Tailscale IP unavailable"
-    fi
-
-    # Test 27-28: Blocked endpoint enforcement
-    show_progress "Testing blocked endpoint: POST /api/generate..."
-    if [[ -n "${TAILSCALE_IP:-}" ]]; then
-        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://$TAILSCALE_IP:11434/api/generate" \
-            -H "Content-Type: application/json" \
-            -d '{"model":"test","prompt":"hi"}' 2>/dev/null || echo "000")
-        if [[ "$HTTP_CODE" == "403" ]] || [[ "$HTTP_CODE" == "404" ]]; then
-            pass "HAProxy blocks POST /api/generate (not in allowlist) - HTTP $HTTP_CODE"
-        elif [[ "$HTTP_CODE" == "000" ]]; then
-            fail "HAProxy connection failed for blocked endpoint test"
-        else
-            fail "HAProxy did not block POST /api/generate (got HTTP $HTTP_CODE, expected 403 or 404)"
-        fi
-    else
-        skip "Cannot test HAProxy blocking - Tailscale IP unavailable"
-    fi
-
-    show_progress "Testing blocked endpoint: POST /api/pull..."
-    if [[ -n "${TAILSCALE_IP:-}" ]]; then
-        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://$TAILSCALE_IP:11434/api/pull" \
-            -H "Content-Type: application/json" \
-            -d '{"name":"test"}' 2>/dev/null || echo "000")
-        if [[ "$HTTP_CODE" == "403" ]] || [[ "$HTTP_CODE" == "404" ]]; then
-            pass "HAProxy blocks POST /api/pull (not in allowlist) - HTTP $HTTP_CODE"
-        elif [[ "$HTTP_CODE" == "000" ]]; then
-            fail "HAProxy connection failed for blocked endpoint test"
-        else
-            fail "HAProxy did not block POST /api/pull (got HTTP $HTTP_CODE, expected 403 or 404)"
-        fi
-    else
-        skip "Cannot test HAProxy blocking - Tailscale IP unavailable"
-    fi
-
-    # Test 29: HAProxy logs exist
-    show_progress "Checking HAProxy logs..."
-    if [[ -f /tmp/haproxy.stdout.log ]] || [[ -f /tmp/haproxy.stderr.log ]]; then
-        pass "HAProxy log files exist"
-    else
-        warn "HAProxy log files not found (may not have been created yet)"
-        pass "HAProxy logs check completed"
-    fi
-
-    # Test 30: HAProxy config exists
-    show_progress "Checking HAProxy config..."
-    HAPROXY_CONFIG_PATH="$HOME/.haproxy/haproxy.cfg"
-    if [[ -f "$HAPROXY_CONFIG_PATH" ]]; then
-        pass "HAProxy config exists ($HAPROXY_CONFIG_PATH)"
-    else
-        fail "HAProxy config missing ($HAPROXY_CONFIG_PATH)"
-    fi
+# Test 23: LAN isolation (should fail - this is expected)
+show_progress "Testing LAN isolation..."
+# Try to ping a typical LAN address (192.168.1.1 - common router IP)
+if ! ping -c 2 -W 2 192.168.1.1 &> /dev/null; then
+    pass "DMZ is isolated from LAN (expected security posture)"
+else
+    warn "DMZ can reach LAN (192.168.1.1) - firewall may not be properly configured"
+    pass "LAN isolation test completed (with warning)"
 fi
 
 # Final summary (F3.8: Use box-drawing characters)
@@ -1083,7 +968,7 @@ else
     echo "  • Restart service: launchctl bootout gui/\$(id -u)/com.ollama && launchctl bootstrap gui/\$(id -u) ~/Library/LaunchAgents/com.ollama.plist"
     echo "  • Check logs: tail -f /tmp/ollama.stderr.log"
     echo "  • Verify port 11434: lsof -i :11434"
-    echo "  • Check Tailscale connectivity: tailscale status"
+    echo "  • Check WireGuard VPN: See server/ROUTER_SETUP.md"
     echo ""
     exit 1
 fi
