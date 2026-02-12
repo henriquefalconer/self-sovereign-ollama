@@ -105,6 +105,7 @@ Client → WireGuard VPN (Router) → Firewall (port 11434 only) → Ollama (DMZ
 ### Setup Guides
 - [server/README.md](server/README.md) – Server overview and quick reference
 - [server/SETUP.md](server/SETUP.md) – Server installation instructions
+- [server/ROUTER_SETUP.md](server/ROUTER_SETUP.md) – OpenWrt router + WireGuard VPN configuration guide
 - [client/README.md](client/README.md) – Client overview and quick reference
 - [client/SETUP.md](client/SETUP.md) – Client installation instructions
 
