@@ -118,11 +118,14 @@ P1 and P2 share no code and communicate only via `client/specs/API_CONTRACT.md`.
 - Binding verification: `lsof -i :11434` shows DMZ IP or `0.0.0.0`
 - Manual router integration checklist (VPN client, router SSH, internet — display only)
 
-### P1d: `server/scripts/warm-models.sh` — localhost fix (minor)
+### P1d: `server/scripts/warm-models.sh` — localhost fix ✅ COMPLETE
 
-- Add `detect_ollama_host()` function (~15 lines): check `OLLAMA_HOST` env → parse plist → fallback to `localhost`
-- Replace `localhost:11434` on lines 56, 95 with `${OLLAMA_HOST}:11434`
-- Update error message on line 57
+**Status**: Completed 2026-02-12
+
+**Implemented:**
+- ✅ Added `detect_ollama_host()` function: checks `OLLAMA_HOST` env → parses plist → fallback to `localhost`
+- ✅ Replaced `localhost:11434` with `${OLLAMA_HOST}:11434` in both curl commands (lines 56, 95)
+- ✅ Updated error messages to reference dynamic host detection
 
 ---
 

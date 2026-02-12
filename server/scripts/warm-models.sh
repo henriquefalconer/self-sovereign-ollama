@@ -24,6 +24,28 @@ error() {
     echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
+# Detect Ollama host from environment or plist
+detect_ollama_host() {
+    # 1. Check OLLAMA_HOST env var
+    if [[ -n "${OLLAMA_HOST:-}" ]]; then
+        echo "$OLLAMA_HOST"
+        return
+    fi
+
+    # 2. Parse from plist
+    local PLIST_PATH="$HOME/Library/LaunchAgents/com.ollama.plist"
+    if [[ -f "$PLIST_PATH" ]]; then
+        local PLIST_HOST=$(grep -A1 "OLLAMA_HOST" "$PLIST_PATH" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+        if [[ -n "$PLIST_HOST" ]]; then
+            echo "$PLIST_HOST"
+            return
+        fi
+    fi
+
+    # 3. Fallback to localhost
+    echo "localhost"
+}
+
 # Usage check
 if [[ $# -eq 0 ]]; then
     echo "Usage: $0 <model1> [model2] [model3] ..."
@@ -51,10 +73,15 @@ echo ""
 info "Models to warm: $*"
 echo ""
 
+# Detect Ollama host
+OLLAMA_HOST=$(detect_ollama_host)
+info "Using Ollama at: ${OLLAMA_HOST}:11434"
+echo ""
+
 # Verify Ollama is running
 info "Checking if Ollama is running..."
-if ! curl -sf http://localhost:11434/v1/models &> /dev/null; then
-    error "Ollama is not responding on localhost:11434"
+if ! curl -sf "http://${OLLAMA_HOST}:11434/v1/models" &> /dev/null; then
+    error "Ollama is not responding on ${OLLAMA_HOST}:11434"
     error "Please ensure Ollama is running and try again"
     exit 1
 fi
@@ -92,7 +119,7 @@ for MODEL in "$@"; do
     # Step 2: Send minimal inference request to load into memory
     info "Loading model into memory..."
     START_TIME=$(date +%s)
-    RESPONSE=$(curl -sf http://localhost:11434/v1/chat/completions \
+    RESPONSE=$(curl -sf "http://${OLLAMA_HOST}:11434/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -d "{
             \"model\": \"$MODEL\",
