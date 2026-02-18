@@ -320,9 +320,7 @@ echo ""
 echo "=== Step 15: Pull Models ==="
 echo ""
 info "Pull models on this server to make them available for inference:"
-echo "  ollama pull qwen2.5-coder:32b"
-echo "  ollama pull deepseek-r1:70b"
-echo "  ollama pull llama3.2-vision:90b"
+echo "  ollama pull [model]"
 
 # Final summary
 echo ""
