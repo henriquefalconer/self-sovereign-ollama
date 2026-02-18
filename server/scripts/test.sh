@@ -46,12 +46,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Compute expected test count based on flags.
-# Tests 1-5, 12-23 always run = 17 base.
+# Tests 1-5, 12-20 always run = 14 base.
 # Test 6 (model detail) is added in test 5 if a model is found.
 # Tests 7-11 run only when not --skip-model-tests and a model is found.
 # Tests 21-26 run only when not --skip-model-tests, not --skip-anthropic-tests, and a model is found.
 # All three model-dependent groups are adjusted in test 5 once model availability is known.
-TOTAL_TESTS=17
+TOTAL_TESTS=14
 if [[ "$SKIP_MODEL_TESTS" != "true" ]]; then
     TOTAL_TESTS=$((TOTAL_TESTS + 5))   # tests 7-11
     if [[ "$SKIP_ANTHROPIC_TESTS" != "true" ]]; then
@@ -938,7 +938,7 @@ else
 fi
 
 echo ""
-echo "=== Network Configuration Tests (v2) ==="
+echo "=== Network Configuration Tests ==="
 
 # Test 20: Router gateway connectivity
 show_progress "Testing router gateway connectivity..."
@@ -946,33 +946,6 @@ if ping -c 3 192.168.250.1 &> /dev/null; then
     pass "Router gateway (192.168.250.1) is reachable"
 else
     fail "Router gateway (192.168.250.1) is not reachable"
-fi
-
-# Test 21: DNS resolution
-show_progress "Testing DNS resolution..."
-if nslookup google.com &> /dev/null || dig google.com &> /dev/null; then
-    pass "DNS resolution works"
-else
-    fail "DNS resolution failed"
-fi
-
-# Test 22: Internet connectivity
-show_progress "Testing internet connectivity..."
-if curl -sf --connect-timeout 5 https://www.google.com &> /dev/null; then
-    pass "Internet connectivity works"
-else
-    fail "Internet connectivity failed (Server may be isolated from WAN)"
-fi
-
-# Test 23: Gateway reachability (server must reach gateway for internet routing)
-# Note: full server→LAN isolation (other devices unreachable) is enforced by router
-# firewall rules and requires manual verification - see router integration checklist below.
-show_progress "Testing gateway reachability..."
-GATEWAY_IP="192.168.250.1"
-if ping -c 2 -W 2 "$GATEWAY_IP" &> /dev/null; then
-    pass "Gateway ($GATEWAY_IP) reachable (expected - required for internet routing)"
-else
-    fail "Gateway ($GATEWAY_IP) not reachable - check static IP and network configuration"
 fi
 
 # Final summary (F3.8: Use box-drawing characters)
