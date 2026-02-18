@@ -201,23 +201,8 @@ sleep 2
 info "✓ Existing services stopped"
 
 # Step 8: Configure Ollama Binding
-echo ""
-echo "=== Step 8: Ollama Binding Configuration ==="
-echo ""
-echo "Choose how Ollama should bind:"
-echo "  1. dedicated LAN IP only ($SERVER_IP) - More secure, DMZ-only access"
-echo "  2. All interfaces (0.0.0.0) - Required for localhost testing"
-echo ""
-read -p "Select binding mode (1/2, default=1): " BINDING_CHOICE
-BINDING_CHOICE=${BINDING_CHOICE:-1}
-
-if [[ "$BINDING_CHOICE" == "2" ]]; then
-    OLLAMA_HOST="0.0.0.0"
-    info "Ollama will bind to all interfaces (0.0.0.0)"
-else
-    OLLAMA_HOST="$SERVER_IP"
-    info "Ollama will bind to dedicated LAN IP ($SERVER_IP)"
-fi
+OLLAMA_HOST="$SERVER_IP"
+info "Ollama will bind to dedicated LAN IP ($SERVER_IP:11434)"
 
 # Step 9: Create LaunchAgent plist
 PLIST_PATH="$HOME/Library/LaunchAgents/com.ollama.plist"
