@@ -2,13 +2,6 @@
 
 macOS client setup for connecting to remote Ollama, supporting Aider and Claude Code.
 
-## Current Status
-
-- ✅ Aider integration with OpenAI-compatible API
-- ✅ Claude Code integration, analytics, version management
-
-All features are fully implemented and tested (40 tests passing).
-
 ## Overview
 
 The self-sovereign-ollama ai-client is a one-time installer that configures your macOS environment to use remote Ollama via OpenAI and Anthropic-compatible APIs.

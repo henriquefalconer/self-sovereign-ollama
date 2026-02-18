@@ -43,7 +43,7 @@ See [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) for details on my netwo
 
 ## Intended Deployment
 
-- **Hardware**: Apple Silicon Mac (M-series) with ≥96 GB unified memory recommended
+- **Hardware**: Apple Silicon Mac (M-series) with ≥64 GB unified memory recommended
 - **Network**: High upload bandwidth (≥100 Mb/s recommended for worldwide low-latency streaming)
 - **Uptime**: 24/7 operation with UPS recommended
 - **OS**: macOS 14 Sonoma or later

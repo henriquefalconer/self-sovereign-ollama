@@ -76,7 +76,7 @@ See [client/README.md](client/README.md) for client installation and usage.
 
 ## Network Documentation (Reference Implementation)
 
-**Note**: This section documents the specific network architecture I configured for my setup. This is **not required** for running Ollama - it's just one possible approach to enable remote access. You can use any network solution that provides connectivity to your Ollama server (VPN, reverse proxy, direct port forwarding, etc.).
+**Note**: This section documents the specific network architecture I configured for my setup. It's just one possible approach to enable remote access. You can use any network solution that provides connectivity to your Ollama server (VPN, reverse proxy, direct port forwarding, etc.).
 
 **My network configuration** (see [server/NETWORK_DOCUMENTATION.md](server/NETWORK_DOCUMENTATION.md) for complete details):
 
@@ -111,7 +111,7 @@ Client → WireGuard VPN (OpenWrt Router) → Firewall (port 11434 only) → Oll
 ## Requirements
 
 ### Server (Core Requirements)
-- Apple Silicon Mac (M-series) with ≥96 GB unified memory recommended
+- Apple Silicon Mac (M-series) with ≥64 GB unified memory recommended
 - macOS 14 Sonoma or later
 - Homebrew
 - Network connectivity (any method - see Network Documentation section for my approach)
@@ -169,11 +169,11 @@ Client → WireGuard VPN (OpenWrt Router) → Firewall (port 11434 only) → Oll
 
 ### Security Properties (My Setup)
 
-- ✅ **Cryptographic authentication** - WireGuard per-peer public keys (no shared secrets)
-- ✅ **Network isolation** - Server isolated from other LAN devices via firewall
-- ✅ **Port-level control** - Only port 11434 accessible from VPN clients
-- ✅ **Self-sovereign** - No reliance on third-party VPN services
-- ✅ **Defense in depth** - VPN authentication + firewall isolation + port firewall
+- **Cryptographic authentication** - WireGuard per-peer public keys (no shared secrets)
+- **Network isolation** - Server isolated from other LAN devices via firewall
+- **Port-level control** - Only port 11434 accessible from VPN clients
+- **Self-sovereign** - No reliance on third-party VPN services
+- **Defense in depth** - VPN authentication + firewall isolation + port firewall
 
 **Your security model will depend on your network approach**. See [server/NETWORK_DOCUMENTATION.md](server/NETWORK_DOCUMENTATION.md) for details on my configuration, and [server/specs/SECURITY.md](server/specs/SECURITY.md) for security considerations.
 

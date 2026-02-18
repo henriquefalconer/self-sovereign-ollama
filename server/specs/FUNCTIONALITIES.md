@@ -243,7 +243,7 @@ curl -X POST http://192.168.250.20:11434/v1/chat/completions \
 
 **Unified memory (Apple Silicon)**:
 - Models loaded into shared CPU/GPU memory
-- Large models (70B+) require ≥96GB RAM
+- Large models (70B+) require ≥64GB RAM
 - Memory pressure triggers model unloading
 - OS swap not recommended for inference (too slow)
 

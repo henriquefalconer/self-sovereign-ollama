@@ -25,7 +25,7 @@ The **intended deployment model combines both** for defense-in-depth.
 
 ## Intended Deployment Context
 
-- Apple Silicon Mac (M-series) with high unified memory capacity (≥96 GB strongly recommended)
+- Apple Silicon Mac (M-series) with high unified memory capacity (≥64 GB strongly recommended)
 - 24/7 operation with uninterruptible power supply
 - High upload bandwidth network connection (≥100 Mb/s recommended for low-latency streaming worldwide)
 - The server machine is **not** the development or usage workstation — clients connect remotely

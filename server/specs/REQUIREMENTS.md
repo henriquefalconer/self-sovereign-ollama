@@ -8,7 +8,7 @@
 
 ## Hardware
 
-- High unified memory capacity (≥96 GB strongly recommended for large models)
+- High unified memory capacity (≥64 GB strongly recommended for large models)
 - 24/7 operation capability with uninterruptible power supply
 - High upload bandwidth network connection (≥100 Mb/s recommended for low-latency streaming worldwide)
 - Sufficient disk space for model storage (varies by model; 100+ GB recommended)
