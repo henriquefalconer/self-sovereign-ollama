@@ -101,8 +101,7 @@ echo "  1. WireGuard VPN server running (see server/NETWORK_DOCUMENTATION.md)"
 echo "  2. LAN network configured (example: 192.168.250.0/24)"
 echo "  3. Firewall rules in place (VPN → AI server port 11434)"
 echo ""
-read -p "Have you completed router setup? (y/N): " -n 1 -r
-echo ""
+read -r -p "Have you completed router setup? (y/N): " REPLY
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     error "Router setup is required before installing the server"
     info "See server/NETWORK_DOCUMENTATION.md for detailed instructions"
@@ -337,8 +336,7 @@ info "Would you like to pre-pull models now?"
 echo "  This is optional but recommended for production deployments."
 echo "  Examples: qwen2.5-coder:32b, deepseek-r1:70b, llama3.2-vision:90b"
 echo ""
-read -p "Pre-pull models? (y/N): " -n 1 -r
-echo ""
+read -r -p "Pre-pull models? (y/N): " REPLY
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     read -p "Enter model names (space-separated): " MODELS
