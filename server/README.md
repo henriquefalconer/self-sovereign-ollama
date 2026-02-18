@@ -119,6 +119,28 @@ All native Ollama endpoints accessible to VPN clients:
 
 Full API contract documented in [../client/specs/API_CONTRACT.md](../client/specs/API_CONTRACT.md).
 
+## Installation
+
+### One-line install (recommended)
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/server/scripts/install.sh)
+```
+
+### One-line uninstall
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/server/scripts/uninstall.sh)
+```
+
+### From a local clone
+
+```bash
+git clone https://github.com/henriquefalconer/private-ai-api.git
+cd private-ai-api/server
+./scripts/install.sh
+```
+
 ## Setup
 
 See [SETUP.md](SETUP.md) for complete server installation instructions.

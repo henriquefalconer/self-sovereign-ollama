@@ -121,12 +121,27 @@ See [ANALYTICS_README.md](../ANALYTICS_README.md) for detailed analytics documen
 
 ## Installation
 
-See [SETUP.md](SETUP.md) for complete setup instructions.
+### One-line install (recommended)
 
-Quick start:
 ```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/client/scripts/install.sh)
+```
+
+### One-line uninstall
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/client/scripts/uninstall.sh)
+```
+
+### From a local clone
+
+```bash
+git clone https://github.com/henriquefalconer/private-ai-api.git
+cd private-ai-api/client
 ./scripts/install.sh
 ```
+
+See [SETUP.md](SETUP.md) for complete setup instructions.
 
 ## API Contract
 
