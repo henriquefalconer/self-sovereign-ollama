@@ -473,7 +473,7 @@ fi
 # Step 11: Optional Claude Code + Ollama integration (v2+)
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Optional: Claude Code + Ollama Integration (v2+)"
+echo "Optional: Claude Code + Ollama Integration"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "You can use Claude Code with your local Ollama server."
