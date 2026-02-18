@@ -516,7 +516,8 @@ if [[ "$CLAUDE_CONSENT" =~ ^[Yy]$ ]]; then
 
 $CLAUDE_MARKER_START
 # Claude Code with local Ollama backend (requires WireGuard VPN)
-alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://$SERVER_IP:11434 claude --dangerously-skip-permissions'
+alias CLAUDE_OLLAMA_FLAGS='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://192.168.250.20:11434 ' # trailing space trick: if the alias value ends with a space, bash will try to expand the next word as an alias too
+alias claude-ollama='CLAUDE_OLLAMA_FLAGS claude'
 $CLAUDE_MARKER_END
 CLAUDE_PROFILE_EOF
 

@@ -1019,7 +1019,7 @@ else
             ALIAS_VALID=false
             MISSING_VARS="${MISSING_VARS}ANTHROPIC_BASE_URL, "
         fi
-        if ! echo "$ALIAS_LINE" | grep -q "claude --dangerously-skip-permissions"; then
+        if ! echo "$ALIAS_LINE" | grep -q "claude"; then
             ALIAS_VALID=false
             MISSING_VARS="${MISSING_VARS}claude command, "
         fi
