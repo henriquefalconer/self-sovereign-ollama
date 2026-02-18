@@ -347,7 +347,37 @@ uci commit network
 
 ---
 
-### Part 4: Firewall Configuration
+### Part 4: OpenWrt WAN Traffic Rules
+
+Ensure OpenWrt accepts WireGuard traffic arriving on its WAN interface. This is required whenever the VPN client connects from a different subnet — which includes clients on the same home network but behind a separate upstream router.
+
+**Via LuCI:**
+1. Navigate to **Network → Firewall → Traffic Rules** tab
+2. Click **Add**
+3. Configure the rule:
+   - **Name**: `Allow-WireGuard`
+   - **Protocol**: UDP
+   - **Source zone**: wan
+   - **Destination port**: `51820`
+   - **Action**: accept
+4. Click **Save & Apply**
+
+**Via UCI:**
+```bash
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-WireGuard'
+uci set firewall.@rule[-1].src='wan'
+uci set firewall.@rule[-1].dest_port='51820'
+uci set firewall.@rule[-1].proto='udp'
+uci set firewall.@rule[-1].target='ACCEPT'
+
+uci commit firewall
+/etc/init.d/firewall restart
+```
+
+---
+
+### Part 5: Firewall Configuration
 
 This is the key part - creating firewall zones and rules to isolate the AI server while allowing controlled access.
 
@@ -458,7 +488,7 @@ uci commit firewall
 
 ---
 
-### Part 5: Static IP for AI Server
+### Part 6: Static IP for AI Server
 
 I configured the AI server with a static IP address for consistency. **I used Option B** (configuring directly on the server) for my setup.
 
@@ -494,7 +524,7 @@ uci commit dhcp
 
 ---
 
-### Part 6: Local Testing
+### Part 7: Local Testing
 
 At this point, with the VPN configured but no ISP port forwarding, I tested connectivity:
 
@@ -529,7 +559,7 @@ ping 192.168.250.1  # LAN gateway - should fail (VPN clients blocked from LAN)
 
 As a final step to enable remote access from anywhere, I configured port forwarding on my ISP router to expose the WireGuard VPN to the internet.
 
-### Part 7: ISP Router Port Forwarding
+### Part 8: ISP Router Port Forwarding
 
 **On my ISP router (192.168.2.1):**
 1. Logged into ISP router admin interface
@@ -543,36 +573,6 @@ As a final step to enable remote access from anywhere, I configured port forward
 This allows external VPN clients to reach the OpenWrt WireGuard server via my public IP.
 
 **CRITICAL**: Only forward UDP port 51820 (WireGuard). Do NOT forward TCP port 11434 (Ollama) to the internet.
-
----
-
-### Part 8: OpenWrt WAN Traffic Rules
-
-Ensure OpenWrt accepts WireGuard traffic from WAN (this allows external VPN connections to reach the router).
-
-**Via LuCI:**
-1. Navigate to **Network → Firewall → Traffic Rules** tab
-2. Click **Add**
-3. Configure the rule:
-   - **Name**: `Allow-WireGuard`
-   - **Protocol**: UDP
-   - **Source zone**: wan
-   - **Destination port**: `51820`
-   - **Action**: accept
-4. Click **Save & Apply**
-
-**Via UCI:**
-```bash
-uci add firewall rule
-uci set firewall.@rule[-1].name='Allow-WireGuard'
-uci set firewall.@rule[-1].src='wan'
-uci set firewall.@rule[-1].dest_port='51820'
-uci set firewall.@rule[-1].proto='udp'
-uci set firewall.@rule[-1].target='ACCEPT'
-
-uci commit firewall
-/etc/init.d/firewall restart
-```
 
 ---
 
