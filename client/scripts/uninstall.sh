@@ -116,7 +116,8 @@ fi
 
 # Prompt for WireGuard tools removal
 echo "WireGuard configuration will be removed with ~/.ai-client directory."
-read -r -p "Would you like to also remove WireGuard tools? (y/N): " REPLY
+read -r -p "Would you like to also remove WireGuard tools? (Y/n): " REPLY
+REPLY=${REPLY:-Y}
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     if command -v brew &> /dev/null && brew list wireguard-tools &> /dev/null 2>&1; then
         info "Removing WireGuard tools..."

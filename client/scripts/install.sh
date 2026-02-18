@@ -623,7 +623,6 @@ else
     echo "  1. Connect to WireGuard VPN:"
     echo ""
     echo -e "     ${BLUE}sudo wg-quick up wg0${NC}"
-    echo "     Or import $WG_CONFIG in WireGuard GUI app"
     echo ""
     echo "  2. Verify VPN connection:"
     echo ""
