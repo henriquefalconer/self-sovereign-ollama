@@ -124,20 +124,20 @@ Full API contract documented in [../client/specs/API_CONTRACT.md](../client/spec
 ### One-line install (recommended)
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/server/scripts/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/self-sovereign-ollama/master/server/scripts/install.sh)
 ```
 
 ### One-line uninstall
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/server/scripts/uninstall.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/self-sovereign-ollama/master/server/scripts/uninstall.sh)
 ```
 
 ### From a local clone
 
 ```bash
-git clone https://github.com/henriquefalconer/private-ai-api.git
-cd private-ai-api/server
+git clone https://github.com/henriquefalconer/self-sovereign-ollama.git
+cd self-sovereign-ollama/server
 ./scripts/install.sh
 ```
 

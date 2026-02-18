@@ -124,20 +124,20 @@ See [ANALYTICS_README.md](../ANALYTICS_README.md) for detailed analytics documen
 ### One-line install (recommended)
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/client/scripts/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/self-sovereign-ollama/master/client/scripts/install.sh)
 ```
 
 ### One-line uninstall
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/private-ai-api/master/client/scripts/uninstall.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/henriquefalconer/self-sovereign-ollama/master/client/scripts/uninstall.sh)
 ```
 
 ### From a local clone
 
 ```bash
-git clone https://github.com/henriquefalconer/private-ai-api.git
-cd private-ai-api/client
+git clone https://github.com/henriquefalconer/self-sovereign-ollama.git
+cd self-sovereign-ollama/client
 ./scripts/install.sh
 ```
 
