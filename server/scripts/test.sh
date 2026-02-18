@@ -964,14 +964,15 @@ else
     fail "Internet connectivity failed (Server may be isolated from WAN)"
 fi
 
-# Test 23: LAN isolation (should fail - this is expected)
-show_progress "Testing LAN isolation..."
-# Try to ping a typical LAN address (192.168.250.1 - common router IP)
-if ! ping -c 2 -W 2 192.168.250.1 &> /dev/null; then
-    pass "Server is isolated from other LAN devices (expected security posture)"
+# Test 23: Gateway reachability (server must reach gateway for internet routing)
+# Note: full server→LAN isolation (other devices unreachable) is enforced by router
+# firewall rules and requires manual verification - see router integration checklist below.
+show_progress "Testing gateway reachability..."
+GATEWAY_IP="192.168.250.1"
+if ping -c 2 -W 2 "$GATEWAY_IP" &> /dev/null; then
+    pass "Gateway ($GATEWAY_IP) reachable (expected - required for internet routing)"
 else
-    warn "Server can reach other LAN devices (192.168.250.1) - firewall may not be properly configured"
-    pass "LAN isolation test completed (with warning)"
+    fail "Gateway ($GATEWAY_IP) not reachable - check static IP and network configuration"
 fi
 
 # Final summary (F3.8: Use box-drawing characters)
