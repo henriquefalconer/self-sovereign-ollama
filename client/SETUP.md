@@ -65,7 +65,7 @@ The installer will:
 - Wait for confirmation that you've been added as VPN peer
 - Prompt for VPN server configuration (server IP, server public key, endpoint)
 - Generate WireGuard configuration file
-- Prompt for server IP (default: `192.168.100.10`)
+- Prompt for server IP (default: `192.168.250.20`)
 - Create `~/.ai-client/env` with required environment variables
 - Update your shell profile (~/.zshrc) to source the environment
 - Install Aider via pipx
@@ -86,8 +86,8 @@ Or simply open a new terminal window.
 
 ```bash
 # Check environment variables
-echo $OLLAMA_API_BASE          # http://192.168.100.10:11434 (no /v1 suffix)
-echo $OPENAI_API_BASE          # http://192.168.100.10:11434/v1
+echo $OLLAMA_API_BASE          # http://192.168.250.20:11434 (no /v1 suffix)
+echo $OPENAI_API_BASE          # http://192.168.250.20:11434/v1
 echo $OPENAI_API_KEY           # ollama
 
 # Check Aider
@@ -143,7 +143,7 @@ aider --model ollama/qwen3-coder    # specify model
 #### Check Configuration
 ```bash
 # Verify environment variables are set
-echo $OPENAI_API_BASE    # Should show: http://192.168.100.10:11434/v1
+echo $OPENAI_API_BASE    # Should show: http://192.168.250.20:11434/v1
 echo $OPENAI_API_KEY     # Should show: ollama
 
 # Test connectivity (requires VPN connection)
@@ -467,8 +467,8 @@ exec $SHELL
 
 **Verification**: Check that your environment variables are correct:
 ```bash
-echo $OLLAMA_API_BASE   # Should be http://192.168.100.10:11434 (NO /v1)
-echo $OPENAI_API_BASE   # Should be http://192.168.100.10:11434/v1 (WITH /v1)
+echo $OLLAMA_API_BASE   # Should be http://192.168.250.20:11434 (NO /v1)
+echo $OPENAI_API_BASE   # Should be http://192.168.250.20:11434/v1 (WITH /v1)
 ```
 
 ### "Connection refused" when testing connectivity
@@ -477,11 +477,11 @@ echo $OPENAI_API_BASE   # Should be http://192.168.100.10:11434/v1 (WITH /v1)
 
 **Solutions**:
 - Verify VPN connection is active: Check WireGuard tunnel status (method depends on client)
-- Check you can reach server DMZ IP: `ping 192.168.100.10`
+- Check you can reach server DMZ IP: `ping 192.168.250.20`
 - Verify your VPN public key has been added to router by admin
 - Test if router firewall allows VPN → DMZ port 11434: ask admin to check firewall rules
 - Test if server is responding: ask server admin to verify `./scripts/test.sh` passes
-- Verify server IP in `~/.ai-client/env` matches DMZ configuration (default: 192.168.100.10)
+- Verify server IP in `~/.ai-client/env` matches DMZ configuration (default: 192.168.250.20)
 
 ### Environment variables not set
 
@@ -577,7 +577,7 @@ echo $OPENAI_API_BASE   # Should be http://192.168.100.10:11434/v1 (WITH /v1)
 
 **Exit code 1 (tool not found)**:
 - Install missing tool (Claude Code or check Ollama server)
-- Verify VPN connectivity to server: `ping 192.168.100.10`
+- Verify VPN connectivity to server: `ping 192.168.250.20`
 
 **Exit code 2 (known incompatible versions)**:
 - Follow script's upgrade/downgrade recommendations

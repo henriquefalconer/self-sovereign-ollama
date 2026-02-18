@@ -17,7 +17,7 @@ server/
 │   ├── uninstall.sh           # Remove server configuration
 │   ├── warm-models.sh         # Optional: pre-load models at boot
 │   └── test.sh                # Comprehensive tests (~25-30 tests)
-├── ROUTER_SETUP.md            # Complete OpenWrt router configuration guide
+├── NETWORK_DOCUMENTATION.md            # Complete OpenWrt router configuration guide
 ├── SETUP.md                   # Server setup instructions
 └── README.md                  # Overview and quick start
 ```
@@ -32,7 +32,7 @@ server/
 - Location: `~/Library/LaunchAgents/com.ollama.plist`
 - Purpose: Configure Ollama as user-level service
 - Key settings:
-  - `OLLAMA_HOST=192.168.100.10` (DMZ interface) or `0.0.0.0` (all interfaces)
+  - `OLLAMA_HOST=192.168.250.20` (dedicated LAN IP) or `0.0.0.0` (all interfaces)
   - `RunAtLoad=true` (auto-start on login)
   - `KeepAlive=true` (auto-restart on crash)
   - Logs: `/tmp/ollama.stdout.log`, `/tmp/ollama.stderr.log`
@@ -42,9 +42,9 @@ server/
 **macOS Static IP:**
 - Configured via: `networksetup` command
 - Interface: Ethernet (or appropriate network interface)
-- IP: `192.168.100.10` (default, configurable)
+- IP: `192.168.250.20` (default, configurable)
 - Subnet: `255.255.255.0` (/24)
-- Router: `192.168.100.1`
+- Router: `192.168.250.1`
 - DNS: Router or public DNS (configurable)
 
 **Verification:**
@@ -54,11 +54,11 @@ networksetup -getinfo "Ethernet"
 
 ### Router Configuration
 
-**External to this repository** - See `ROUTER_SETUP.md`
+**External to this repository** - See `NETWORK_DOCUMENTATION.md`
 
 **Key components:**
 - WireGuard VPN configuration on router
-- DMZ network configuration
+- isolated LAN configuration
 - Firewall rules (VPN → DMZ, DMZ → WAN, etc.)
 - Static DHCP lease or router-side static IP assignment
 
@@ -83,7 +83,7 @@ networksetup -getinfo "Ethernet"
 │ Repository (server/)                       │
 │ ├── specs/*.md (documentation)             │
 │ ├── scripts/*.sh (automation)              │
-│ └── ROUTER_SETUP.md (router guide)         │
+│ └── NETWORK_DOCUMENTATION.md (router guide)         │
 └────────────────────────────────────────────┘
                   │
                   │ install.sh creates ↓
@@ -93,7 +93,7 @@ networksetup -getinfo "Ethernet"
 │ ├── ~/Library/LaunchAgents/               │
 │ │   └── com.ollama.plist                  │
 │ ├── macOS Network Settings                │
-│ │   └── Static IP: 192.168.100.10         │
+│ │   └── Static IP: 192.168.250.20         │
 │ └── /tmp/                                  │
 │     ├── ollama.stdout.log                  │
 │     └── ollama.stderr.log                  │
@@ -103,7 +103,7 @@ networksetup -getinfo "Ethernet"
                   ▼
 ┌────────────────────────────────────────────┐
 │ Running Service                            │
-│ └── Ollama (192.168.100.10:11434)         │
+│ └── Ollama (192.168.250.20:11434)         │
 │     • Serves all API endpoints directly    │
 │     • No application-layer proxy          │
 └────────────────────────────────────────────┘
@@ -114,7 +114,7 @@ networksetup -getinfo "Ethernet"
 │ Router (external to repo)                  │
 │ ├── WireGuard VPN config                   │
 │ ├── DMZ firewall rules                     │
-│ └── See ROUTER_SETUP.md                    │
+│ └── See NETWORK_DOCUMENTATION.md                    │
 └────────────────────────────────────────────┘
 ```
 
@@ -127,7 +127,7 @@ networksetup -getinfo "Ethernet"
 **Layer 1: Network Perimeter (Router)**
 - Config: OpenWrt UCI or LuCI (external to repository)
 - Controls: Who can reach server (VPN auth + firewall)
-- See: `ROUTER_SETUP.md`
+- See: `NETWORK_DOCUMENTATION.md`
 
 **Layer 2: Server (Ollama)**
 - Config: `OLLAMA_HOST` in plist + macOS network settings
@@ -194,10 +194,10 @@ Minimal configuration keeps system simple and maintainable.
 
 **Not handled by uninstall.sh** - must be done manually:
 
-1. Remove server's IP from DMZ firewall rules
-2. Optionally remove DMZ network configuration
+1. Remove server's IP from isolated server firewall rules
+2. Optionally remove isolated LAN configuration
 3. Remove VPN peer configurations (client public keys)
-4. See `ROUTER_SETUP.md` for reversal instructions
+4. See `NETWORK_DOCUMENTATION.md` for reversal instructions
 
 ---
 
@@ -235,9 +235,9 @@ File layout provides:
 
 **Router-side** (external):
 - WireGuard VPN configuration
-- DMZ network configuration
+- isolated LAN configuration
 - Firewall rules
-- See `ROUTER_SETUP.md` for complete guide
+- See `NETWORK_DOCUMENTATION.md` for complete guide
 
 **Benefits:**
 - Simpler than v1 (no HAProxy)

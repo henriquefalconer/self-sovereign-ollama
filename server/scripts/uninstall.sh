@@ -95,7 +95,7 @@ info "Network configuration cleanup..."
 echo ""
 warn "Note: This script does NOT automatically revert network settings."
 echo ""
-echo "If you configured a static IP for the DMZ network during installation,"
+echo "If you configured a static IP for the isolated LAN during installation,"
 echo "you may want to revert it back to DHCP:"
 echo ""
 echo "  sudo networksetup -listallhardwareports"
@@ -136,10 +136,10 @@ echo ""
 echo "You should remove this server's WireGuard peer from your router:"
 echo "  1. SSH into your OpenWrt router"
 echo "  2. Remove the WireGuard peer configuration for this server"
-echo "  3. Remove any DMZ firewall rules related to this server"
+echo "  3. Remove any LAN firewall rules related to this server"
 echo ""
 echo "For detailed instructions, see:"
-echo "  server/ROUTER_SETUP.md"
+echo "  server/NETWORK_DOCUMENTATION.md"
 echo ""
 
 # Step 7: Document what was left untouched
@@ -148,7 +148,7 @@ REMAINING_ITEMS+=("Homebrew (if installed)")
 REMAINING_ITEMS+=("Ollama binary (installed via Homebrew)")
 REMAINING_ITEMS+=("Downloaded models in ~/.ollama/models/ (valuable data preserved)")
 REMAINING_ITEMS+=("Network configuration (static IP, if configured)")
-REMAINING_ITEMS+=("Router configuration (WireGuard peer, DMZ rules)")
+REMAINING_ITEMS+=("Router configuration (WireGuard peer, LAN rules)")
 
 # Verify the model directory still exists
 if [[ -d "$HOME/.ollama/models" ]]; then
@@ -187,7 +187,7 @@ echo ""
 info "To clean up router configuration:"
 echo "  • SSH into your OpenWrt router"
 echo "  • Remove the WireGuard peer for this server"
-echo "  • Remove DMZ firewall rules (see server/ROUTER_SETUP.md)"
+echo "  • Remove LAN firewall rules (see server/NETWORK_DOCUMENTATION.md)"
 echo ""
 
 info "The self-sovereign-ollama ai-server has been uninstalled."

@@ -97,37 +97,37 @@ echo ""
 echo "=== Router and Network Configuration Prerequisites ==="
 echo ""
 warn "Before proceeding, ensure your OpenWrt router is configured:"
-echo "  1. WireGuard VPN server running (see server/ROUTER_SETUP.md)"
-echo "  2. DMZ network configured (default: 192.168.100.0/24)"
-echo "  3. Firewall rules in place (VPN → DMZ port 11434)"
+echo "  1. WireGuard VPN server running (see server/NETWORK_DOCUMENTATION.md)"
+echo "  2. LAN network configured (example: 192.168.250.0/24)"
+echo "  3. Firewall rules in place (VPN → AI server port 11434)"
 echo ""
 read -p "Have you completed router setup? (y/N): " -n 1 -r
 echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     error "Router setup is required before installing the server"
-    info "See server/ROUTER_SETUP.md for detailed instructions"
+    info "See server/NETWORK_DOCUMENTATION.md for detailed instructions"
     exit 1
 fi
 info "✓ Router prerequisites confirmed"
 
-# Step 4: DMZ Network Configuration
+# Step 4: LAN Network Configuration
 echo ""
-echo "=== Step 4: DMZ Network Configuration ==="
+echo "=== Step 4: LAN Network Configuration ==="
 echo ""
 
-# Prompt for DMZ subnet
-info "Enter DMZ subnet (default: 192.168.100.0/24)"
-read -p "Subnet: " DMZ_SUBNET
-DMZ_SUBNET=${DMZ_SUBNET:-192.168.100.0/24}
+# Prompt for LAN subnet
+info "Enter LAN subnet (default: 192.168.250.0/24)"
+read -p "Subnet: " LAN_SUBNET
+LAN_SUBNET=${LAN_SUBNET:-192.168.250.0/24}
 
 # Extract subnet base and mask
-DMZ_BASE=$(echo "$DMZ_SUBNET" | cut -d/ -f1 | cut -d. -f1-3)
-DMZ_MASK=$(echo "$DMZ_SUBNET" | cut -d/ -f2)
+LAN_BASE=$(echo "$LAN_SUBNET" | cut -d/ -f1 | cut -d. -f1-3)
+LAN_MASK=$(echo "$LAN_SUBNET" | cut -d/ -f2)
 
 # Prompt for server static IP
-info "Enter server IP on DMZ network (default: ${DMZ_BASE}.10)"
+info "Enter server IP on LAN network (default: ${LAN_BASE}.20)"
 read -p "Server IP: " SERVER_IP
-SERVER_IP=${SERVER_IP:-${DMZ_BASE}.10}
+SERVER_IP=${SERVER_IP:-${LAN_BASE}.20}
 
 # Validate IP format
 if ! echo "$SERVER_IP" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
@@ -136,8 +136,8 @@ if ! echo "$SERVER_IP" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
 fi
 
 # Validate subnet membership
-if ! echo "$SERVER_IP" | grep -q "^${DMZ_BASE}\."; then
-    error "Server IP $SERVER_IP is not in subnet $DMZ_SUBNET"
+if ! echo "$SERVER_IP" | grep -q "^${LAN_BASE}\."; then
+    error "Server IP $SERVER_IP is not in subnet $LAN_SUBNET"
     exit 1
 fi
 
@@ -172,7 +172,7 @@ info "✓ Using interface: $INTERFACE"
 
 # Configure static IP
 info "Configuring static IP..."
-GATEWAY="${DMZ_BASE}.1"
+GATEWAY="${LAN_BASE}.1"
 NETMASK="255.255.255.0"
 
 if sudo networksetup -setmanual "$INTERFACE" "$SERVER_IP" "$NETMASK" "$GATEWAY"; then
@@ -240,7 +240,7 @@ echo ""
 echo "=== Step 8: Ollama Binding Configuration ==="
 echo ""
 echo "Choose how Ollama should bind:"
-echo "  1. DMZ interface only ($SERVER_IP) - More secure, DMZ-only access"
+echo "  1. dedicated LAN IP only ($SERVER_IP) - More secure, DMZ-only access"
 echo "  2. All interfaces (0.0.0.0) - Required for localhost testing"
 echo ""
 read -p "Select binding mode (1/2, default=1): " BINDING_CHOICE
@@ -251,7 +251,7 @@ if [[ "$BINDING_CHOICE" == "2" ]]; then
     info "Ollama will bind to all interfaces (0.0.0.0)"
 else
     OLLAMA_HOST="$SERVER_IP"
-    info "Ollama will bind to DMZ interface ($SERVER_IP)"
+    info "Ollama will bind to dedicated LAN IP ($SERVER_IP)"
 fi
 
 # Step 9: Create LaunchAgent plist
@@ -308,7 +308,7 @@ sleep 3  # Give service time to bind
 if lsof -i :11434 -sTCP:LISTEN &> /dev/null; then
     BINDING=$(lsof -i :11434 -sTCP:LISTEN 2>/dev/null | grep ollama | awk '{print $9}')
     if echo "$BINDING" | grep -q "$SERVER_IP"; then
-        info "✓ Ollama bound to DMZ interface ($SERVER_IP:11434)"
+        info "✓ Ollama bound to dedicated LAN IP ($SERVER_IP:11434)"
     elif echo "$BINDING" | grep -q "0.0.0.0"; then
         info "✓ Ollama bound to all interfaces (0.0.0.0:11434)"
     else
@@ -401,7 +401,7 @@ echo ""
 info "✓ ai-server is running and configured"
 echo ""
 echo "Configuration:"
-echo "  • DMZ IP: $SERVER_IP"
+echo "  • Server IP: $SERVER_IP"
 echo "  • Port: 11434"
 echo "  • Ollama bound to: $OLLAMA_HOST"
 echo "  • LaunchAgent: Loaded and running"
@@ -409,11 +409,11 @@ echo "  • Auto-start: Enabled (survives reboots)"
 echo ""
 echo "Router Status:"
 echo "  • Gateway: $GATEWAY (reachable)"
-echo "  • WireGuard VPN: Configured (per ROUTER_SETUP.md)"
-echo "  • Firewall: VPN → DMZ port 11434 allowed"
+echo "  • WireGuard VPN: Configured (per NETWORK_DOCUMENTATION.md)"
+echo "  • Firewall: VPN → AI server port 11434 allowed"
 echo ""
 echo "What's Next:"
-echo "  1. Add VPN clients on router (see server/ROUTER_SETUP.md)"
+echo "  1. Add VPN clients on router (see server/NETWORK_DOCUMENTATION.md)"
 echo "  2. Test from client: curl http://$SERVER_IP:11434/v1/models"
 echo "  3. Run comprehensive tests: cd server/scripts && ./test.sh --verbose"
 echo "  4. Check logs: tail -f /tmp/ollama.stderr.log"

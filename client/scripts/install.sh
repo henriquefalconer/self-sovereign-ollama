@@ -202,9 +202,9 @@ echo ""
 # Prompt for server IP
 echo "=== Server Configuration ==="
 echo ""
-info "Enter the AI server IP address (default: 192.168.100.10)"
+info "Enter the AI server IP address (default: 192.168.250.20)"
 read -r -p "Server IP: " SERVER_IP < /dev/tty
-SERVER_IP=${SERVER_IP:-192.168.100.10}
+SERVER_IP=${SERVER_IP:-192.168.250.20}
 echo ""
 
 # Validate IP format
@@ -240,9 +240,9 @@ if [[ -z "$WG_CLIENT_IP" ]]; then
     exit 1
 fi
 
-info "Enter allowed IPs (default: 192.168.100.0/24 for DMZ access only)"
+info "Enter allowed IPs (default: 192.168.250.0/24 for LAN access only)"
 read -r -p "Allowed IPs: " WG_ALLOWED_IPS < /dev/tty
-WG_ALLOWED_IPS=${WG_ALLOWED_IPS:-192.168.100.0/24}
+WG_ALLOWED_IPS=${WG_ALLOWED_IPS:-192.168.250.0/24}
 
 # Generate WireGuard configuration
 WG_CONFIG="$WG_DIR/wg0.conf"
@@ -637,7 +637,7 @@ else
     echo ""
     echo "  Troubleshooting:"
     echo "  • Ensure router admin has added your public key as a VPN peer"
-    echo "  • Check router firewall allows DMZ access (192.168.100.0/24)"
+    echo "  • Check router firewall allows LAN access (192.168.250.0/24)"
     echo "  • Verify server is running: ssh into server and check Ollama status"
     echo ""
 fi

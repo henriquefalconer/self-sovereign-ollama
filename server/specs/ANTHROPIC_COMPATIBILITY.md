@@ -4,7 +4,7 @@
 
 Ollama (version 0.5.0+) provides compatibility with the Anthropic Messages API to enable Claude Code and other Anthropic-compatible tools to work with local models. This specification documents the compatibility layer as implemented by Ollama and its limitations.
 
-**Note**: This specification is implementation-agnostic. For v2 architecture (WireGuard + DMZ), clients access via `http://192.168.100.10:11434` instead of Tailscale hostname.
+**Note**: This specification is implementation-agnostic. For v2 architecture (WireGuard + Firewall Isolation), clients access via `http://192.168.250.20:11434` instead of Tailscale hostname.
 
 ## Architecture
 

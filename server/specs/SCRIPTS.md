@@ -19,10 +19,10 @@
   ═══════════════════════════════════════════════════════
 
   Before installing the AI server, you must configure your
-  OpenWrt router with WireGuard VPN and DMZ network.
+  OpenWrt router with WireGuard VPN and isolated LAN.
 
   Follow the complete guide:
-    server/ROUTER_SETUP.md
+    server/NETWORK_DOCUMENTATION.md
 
   Have you completed router setup? (y/N)
   ```
@@ -30,31 +30,31 @@
 - If user answers Yes, continues
 
 ### DMZ Network Configuration
-- Prompts for DMZ subnet (default: `192.168.100.0/24`)
-- Prompts for server static IP (default: `192.168.100.10`)
+- Prompts for LAN subnet (default: `192.168.250.0/24`)
+- Prompts for server static IP (default: `192.168.250.20`)
 - Validates IP format and subnet membership
 - Displays network configuration summary for user confirmation
 
 ### Static IP Configuration
 - Configures macOS to use static IP on appropriate network interface
-- Determines network interface connected to DMZ network:
+- Determines network interface connected to isolated LAN:
   - Lists available interfaces: `networksetup -listallhardwareports`
   - User selects interface or script detects automatically
 - Sets static IP configuration:
   ```bash
   sudo networksetup -setmanual "Ethernet" \
-    192.168.100.10 \
+    192.168.250.20 \
     255.255.255.0 \
-    192.168.100.1
+    192.168.250.1
   ```
 - Configures DNS servers (router as primary, public DNS as backup)
-- Verifies connectivity to router: `ping -c 3 192.168.100.1`
+- Verifies connectivity to router: `ping -c 3 192.168.250.1`
 
 ### Ollama Installation & Configuration
 - Checks / installs Ollama via Homebrew (output redirected to log)
 - Stops any existing Ollama service (brew services or launchd) to avoid conflicts
 - Creates `~/Library/LaunchAgents/com.ollama.plist` to run Ollama as user-level service
-  - Sets `OLLAMA_HOST=192.168.100.10` to bind DMZ interface only (configurable)
+  - Sets `OLLAMA_HOST=192.168.250.20` to bind dedicated LAN IP only (configurable)
     - Alternative: `OLLAMA_HOST=0.0.0.0` if user prefers to bind all interfaces
   - Configures `KeepAlive=true` and `RunAtLoad=true` for automatic startup
   - Logs to `/tmp/ollama.stdout.log` and `/tmp/ollama.stderr.log`
@@ -62,12 +62,12 @@
 - Verifies Ollama is listening on port 11434 (retry loop with timeout)
 - Verifies binding to correct interface: `lsof -i :11434` (should show DMZ IP)
 - Verifies process is running as user (not root)
-- Runs self-test: `curl -sf http://192.168.100.10:11434/v1/models`
+- Runs self-test: `curl -sf http://192.168.250.20:11434/v1/models`
 
 ### Router Connectivity Verification
 - Tests connectivity to router:
   ```bash
-  ping -c 3 192.168.100.1  # Router gateway
+  ping -c 3 192.168.250.1  # Router gateway
   ```
 - Tests DNS resolution (if configured)
 - Displays warning if router unreachable
@@ -84,19 +84,19 @@
 ### Final Summary
 - Visual hierarchy with boxed "Installation Complete" message
 - Shows service status:
-  - Ollama running on DMZ interface (192.168.100.10:11434)
+  - Ollama running on isolated LAN interface (192.168.250.20:11434)
   - Static IP configured
   - Auto-start enabled
   - Router connectivity: OK/WARNING
 - **What's Next** section with numbered steps:
-  1. Verify router WireGuard VPN is configured (see ROUTER_SETUP.md)
+  1. Verify router WireGuard VPN is configured (see NETWORK_DOCUMENTATION.md)
   2. Add VPN client peers to router (client installation will generate keys)
   3. Install client on laptop/desktop (provides curl-pipe command)
   4. Test connection from VPN client
 - **Security Notes**:
   - Port 11434 is NOT publicly exposed (firewall protects it)
   - Only WireGuard VPN clients can reach server
-  - DMZ isolation prevents server from accessing LAN
+  - firewall isolation prevents server from accessing LAN
 - Troubleshooting commands section:
   - Restart Ollama
   - View logs
@@ -109,7 +109,7 @@
 - Interactive: user controls pacing (prompts for configuration)
 - Informative: context-specific error messages and troubleshooting tips
 - Complete: guides user through entire workflow including router setup reference
-- References external documentation: points to ROUTER_SETUP.md for router configuration
+- References external documentation: points to NETWORK_DOCUMENTATION.md for router configuration
 
 ## scripts/uninstall.sh
 
@@ -140,7 +140,7 @@
   To fully uninstall:
   1. Remove this server's peer from router WireGuard config
   2. Remove DMZ firewall rules (optional)
-  3. See ROUTER_SETUP.md for instructions
+  3. See NETWORK_DOCUMENTATION.md for instructions
   ```
 - **Graceful degradation** - Continue with remaining cleanup even if some steps fail
 - **Idempotent** - Safe to re-run on already-cleaned system (no errors on missing files)
@@ -180,8 +180,8 @@ Comprehensive test script that validates all server functionality. Designed to r
 ### Network Configuration Tests
 - Verify static IP is configured correctly
 - Check interface binding: `networksetup -getinfo "Ethernet"`
-- Verify IP matches configured DMZ IP (e.g., 192.168.100.10)
-- Test router connectivity: `ping -c 3 192.168.100.1`
+- Verify IP matches configured DMZ IP (e.g., 192.168.250.20)
+- Test router connectivity: `ping -c 3 192.168.250.1`
 - Test DNS resolution (if configured)
 - Test outbound internet: `ping -c 3 8.8.8.8`
 - Verify LAN isolation: `ping -c 1 192.168.1.x` (should fail or timeout)
@@ -249,7 +249,7 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
 ### Network Isolation Tests
 - Verify Ollama service binds to correct interface
   - Use `lsof -i :11434` to check binding
-  - Should show DMZ IP (192.168.100.10) or 0.0.0.0
+  - Should show DMZ IP (192.168.250.20) or 0.0.0.0
 - Test local access via DMZ IP (should succeed)
 - Test router connectivity (should succeed)
 - Test LAN isolation: attempt to reach LAN device (should fail)
@@ -262,16 +262,16 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
 **These tests require VPN client or router SSH access and cannot be automated from server:**
 
 **From VPN client (after VPN connected):**
-- [ ] Can reach DMZ server: `ping 192.168.100.10` (should succeed)
-- [ ] Can reach port 11434: `nc -zv 192.168.100.10 11434` (should succeed)
-- [ ] Cannot reach LAN: `ping 192.168.1.1` (should timeout/fail)
+- [ ] Can reach DMZ server: `ping 192.168.250.20` (should succeed)
+- [ ] Can reach port 11434: `nc -zv 192.168.250.20 11434` (should succeed)
+- [ ] Cannot reach LAN: `ping 192.168.250.1` (should timeout/fail)
 - [ ] Cannot reach internet: `ping 8.8.8.8` (should timeout/fail)
-- [ ] Inference works: `curl http://192.168.100.10:11434/v1/models` (should return JSON)
+- [ ] Inference works: `curl http://192.168.250.20:11434/v1/models` (should return JSON)
 
 **From router (via SSH):**
 - [ ] WireGuard running: `wg show wg0` (should show peers)
 - [ ] Firewall rules present: `iptables -L -v -n` (should show VPN → DMZ rules)
-- [ ] Can reach DMZ server: `ping 192.168.100.10` (should succeed)
+- [ ] Can reach DMZ server: `ping 192.168.250.20` (should succeed)
 - [ ] DMZ server isolated from LAN: check firewall rules
 
 **From internet (before VPN):**
@@ -312,7 +312,7 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
   - Overall pass/fail status
   - Statistics (automated tests only)
   - Manual checklist reminder
-  - Next steps if failures occurred (check ROUTER_SETUP.md, etc.)
+  - Next steps if failures occurred (check NETWORK_DOCUMENTATION.md, etc.)
 
 ### Test Requirements
 - Requires at least one model pulled for model-specific tests
@@ -323,8 +323,8 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
 ## Configuration files
 
 Server configuration is minimal and managed via:
-- Environment variables in the Ollama launchd plist (`OLLAMA_HOST=192.168.100.10` or `0.0.0.0`)
-- macOS network settings (static IP for DMZ interface)
+- Environment variables in the Ollama launchd plist (`OLLAMA_HOST=192.168.250.20` or `0.0.0.0`)
+- macOS network settings (static IP for dedicated LAN IP)
 - Ollama's built-in configuration system
-- Router configuration (managed separately, see ROUTER_SETUP.md)
+- Router configuration (managed separately, see NETWORK_DOCUMENTATION.md)
 - No additional configuration files needed on server

@@ -1,24 +1,33 @@
 # self-sovereign-ollama ai-server
 
-Ollama server configuration for secure remote access from Apple Silicon Macs with high unified memory.
+**Ollama server configuration for remote access on Apple Silicon.**
 
 ## Overview
 
-The self-sovereign-ollama ai-server configures Ollama to provide secure, remote LLM inference with:
-- **Two-layer security**: Network Perimeter (OpenWrt router + WireGuard VPN + DMZ isolation + Firewall) + AI Server (Ollama on DMZ)
+This configures Ollama on macOS to provide remote LLM inference with:
 - **Dual API support**: OpenAI-compatible `/v1/*` and Anthropic-compatible `/v1/messages` endpoints
 - Supports both Aider (OpenAI API) and Claude Code (Anthropic API)
-- OpenWrt router provides VPN authentication, DMZ network segmentation, and port-level firewall rules
-- Runs exclusively on a dedicated, always-on Mac in DMZ network
-- Zero public internet exposure
-- Self-sovereign infrastructure (no third-party VPN services)
+- Native macOS service management via launchd
+- Configurable network binding (dedicated IP or all interfaces)
+- Runs exclusively on a dedicated, always-on Mac
+
+## About Network Configuration
+
+**Important**: This documentation focuses on the **Ollama server setup**. Network configuration (VPN, firewall, remote access) is documented separately in [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) as a reference implementation, but it's **essentially an independent project**.
+
+**What this means:**
+- The server setup works with any network approach that provides connectivity
+- The network documentation reflects my specific setup (OpenWrt + WireGuard) and serves as reference material
+- You can use different solutions (Tailscale, Cloudflare Tunnel, direct port forwarding, etc.)
+
+See [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) for details on my network configuration if you're interested in replicating it.
 
 ## Quick Reference
 
 | Operation | Command | Description |
 |-----------|---------|-------------|
 | **Check status** | `launchctl list \| grep com.ollama` | Check if Ollama service is loaded |
-| | `curl -sf http://192.168.100.10:11434/v1/models` | Test API endpoint availability from VPN |
+| | `curl -sf http://192.168.250.20:11434/v1/models` | Test API endpoint availability from VPN |
 | **Start service** | `launchctl kickstart gui/$(id -u)/com.ollama` | Start Ollama if stopped |
 | **Stop service** | `launchctl stop gui/$(id -u)/com.ollama` | Stop Ollama temporarily |
 | **Restart service** | `launchctl kickstart -k gui/$(id -u)/com.ollama` | Kill and restart Ollama immediately |
@@ -29,7 +38,7 @@ The self-sovereign-ollama ai-server configures Ollama to provide secure, remote 
 | **Run tests** | `./scripts/test.sh` | Run comprehensive test suite (36 tests) |
 | | `./scripts/test.sh --skip-anthropic-tests` | Skip Anthropic API tests (for Ollama < 0.5.0) |
 | | `./scripts/test.sh --skip-model-tests` | Run tests without model inference |
-| **Router config** | See [ROUTER_SETUP.md](ROUTER_SETUP.md) | OpenWrt + WireGuard VPN configuration guide |
+| **Router config** | See [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) | OpenWrt + WireGuard VPN configuration guide |
 | **Uninstall** | `./scripts/uninstall.sh` | Remove server configuration and services |
 
 ## Intended Deployment
@@ -43,30 +52,27 @@ The self-sovereign-ollama ai-server configures Ollama to provide secure, remote 
 
 See [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md) for full architectural details.
 
-**Network topology:**
-```
-Client → WireGuard VPN (Router) → Firewall (port 11434) → Ollama (DMZ: 192.168.100.10:11434)
-```
-
-**Network segmentation:**
-- **VPN subnet**: 10.10.10.0/24 (WireGuard clients)
-- **DMZ subnet**: 192.168.100.0/24 (Ollama server isolated from LAN)
-- **LAN subnet**: 192.168.1.0/24 (Admin access only, no VPN/DMZ access)
-
-**Key principles:**
-- **Two-layer security**: Network Perimeter (Router + VPN + DMZ + Firewall) → AI Server (Ollama)
+**Core server architecture:**
 - Built on Ollama's native dual API capabilities (OpenAI + Anthropic)
-- Self-sovereign infrastructure (OpenWrt router + WireGuard VPN)
 - Native macOS service management via launchd
-- Router firewall provides port-level access control (VPN → DMZ port 11434 only)
-- DMZ isolation (server separated from LAN)
-- Access restricted to authorized VPN peers (WireGuard public key authentication)
+- Configurable network binding (dedicated IP or all interfaces)
+- Service auto-start and crash recovery
+
+**My network topology** (see [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) for details):
+```
+Client → WireGuard VPN (OpenWrt Router) → Firewall (port 11434) → Ollama (192.168.250.20:11434)
+```
+
+**Network access** (your approach may differ):
+- Remote access requires network connectivity (VPN, reverse proxy, etc.)
+- My implementation uses WireGuard VPN with firewall-based server isolation
+- See [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) for my specific network configuration
 
 ## API
 
 The server exposes dual API surfaces directly via Ollama at:
 ```
-http://192.168.100.10:11434
+http://192.168.250.20:11434
 ```
 
 All Ollama endpoints are accessible to authorized VPN clients. Access control provided by router firewall (VPN authentication + port 11434 only).
@@ -115,16 +121,16 @@ Full API contract documented in [../client/specs/API_CONTRACT.md](../client/spec
 
 ## Setup
 
-See [SETUP.md](SETUP.md) for server installation instructions and [ROUTER_SETUP.md](ROUTER_SETUP.md) for router configuration.
+See [SETUP.md](SETUP.md) for complete server installation instructions.
 
-Quick summary:
-1. Configure OpenWrt router with WireGuard VPN server and DMZ network segmentation (see [ROUTER_SETUP.md](ROUTER_SETUP.md))
-2. Install Ollama on Mac server
-3. Configure Ollama to bind to DMZ interface (192.168.100.10) via launchd
-4. Configure server with static IP on DMZ network
-5. Add VPN client public keys to router WireGuard configuration
-6. Pull desired models via Ollama CLI
-7. Verify connectivity from VPN client (test firewall rules and DMZ isolation)
+**Quick summary** (server only):
+1. Install Ollama on Mac server
+2. Configure Ollama to bind to dedicated IP or all interfaces via launchd
+3. Configure server with static IP (if using dedicated IP binding)
+4. Pull desired models via Ollama CLI
+5. Verify local connectivity
+
+**For remote access**, you'll also need network configuration. See [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) for my approach (OpenWrt + WireGuard), or use your preferred method (Tailscale, Cloudflare Tunnel, etc.).
 
 ## Operations
 
@@ -135,11 +141,11 @@ Once installed, Ollama service runs as a LaunchAgent and starts automatically at
 # Check if Ollama service is running
 launchctl list | grep com.ollama
 
-# Test API endpoint (from server locally on DMZ interface)
-curl -sf http://192.168.100.10:11434/v1/models
+# Test API endpoint (from server locally on dedicated IP)
+curl -sf http://192.168.250.20:11434/v1/models
 
 # Test from VPN client (requires VPN connection)
-curl -sf http://192.168.100.10:11434/v1/models
+curl -sf http://192.168.250.20:11434/v1/models
 ```
 
 ### Start Service
@@ -231,8 +237,8 @@ The test suite validates:
 - **OpenAI API** (7 tests): All OpenAI-compatible endpoints (`/v1/models`, `/v1/models/{model}`, `/v1/chat/completions`, `/v1/responses`), streaming, error handling
 - **Anthropic API** (5 tests): `/v1/messages` endpoint (non-streaming, streaming, system prompts, error handling)
 - **Security** (4 tests): Process owners, log files, plist configuration, OLLAMA_HOST verification
-- **Network Configuration** (6 tests): DMZ interface binding (192.168.100.10), localhost unreachable (DMZ-only), static IP configuration
-- **Router Integration** (Manual checklist): VPN connectivity, firewall rules, DMZ isolation (requires SSH access to router)
+- **Network Configuration** (6 tests): Dedicated IP binding (192.168.250.20), localhost unreachable (dedicated IP only), static IP configuration
+- **Router Integration** (Manual checklist): VPN connectivity, firewall rules, server isolation (requires SSH access to router)
 
 **Total**: 36 tests (automated) + manual router integration checklist
 
@@ -248,9 +254,9 @@ Running 36 tests
 ✓ PASS Ollama is listening on port 11434
 
 === Network Configuration Tests ===
-✓ PASS Ollama is bound to DMZ interface (192.168.100.10)
-✓ PASS Ollama is unreachable from localhost (DMZ-only)
-✓ PASS Static IP configured on DMZ network
+✓ PASS Ollama is bound to dedicated LAN IP (192.168.250.20)
+✓ PASS Ollama is unreachable from localhost (dedicated IP only)
+✓ PASS Static IP configured on isolated LAN
 
 === OpenAI API Endpoint Tests ===
 ✓ PASS GET /v1/models returns valid JSON (1 models)
@@ -279,31 +285,30 @@ Total:   36
 ✓ All tests passed!
 
 === Manual Router Integration Checklist ===
-(Requires SSH access to router - see ROUTER_SETUP.md)
+(Requires SSH access to router - see NETWORK_DOCUMENTATION.md)
 ```
 
 All 36 automated tests pass (service status, APIs, security, network configuration).
 
 ## Security
 
-See [specs/SECURITY.md](specs/SECURITY.md) for the complete security model.
+See [specs/SECURITY.md](specs/SECURITY.md) for complete security considerations.
 
-**Two-layer defense in depth:**
-1. **Network Perimeter** (Router + VPN + DMZ + Firewall) - Controls WHO can reach the server and WHAT ports are accessible
-2. **AI Server** (Ollama on DMZ) - Provides inference services
+**Server security:**
+- Ollama runs as user-level process (not root)
+- Logs stored locally
+- No built-in authentication (relies on network-level access control)
+- All Ollama endpoints accessible to network clients
 
-**Properties:**
-- No public internet exposure (VPN-only access)
-- Self-sovereign infrastructure (no third-party VPN services)
-- DMZ isolation (server separated from LAN)
-- Per-peer VPN authentication (WireGuard public key cryptography)
-- Port-level firewall (only port 11434 accessible from VPN)
-- Direct Ollama API exposure (all endpoints accessible to authorized VPN clients)
+**Network security** (depends on your approach):
+- My implementation: WireGuard VPN with firewall-based isolation (see [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md))
+- Your implementation may use different methods (Tailscale, reverse proxy with auth, etc.)
+- Security model depends on how you provide remote access
 
 ## Documentation
 
 - [SETUP.md](SETUP.md) – Server setup instructions
-- [ROUTER_SETUP.md](ROUTER_SETUP.md) – OpenWrt router + WireGuard VPN configuration guide
+- [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) – OpenWrt router + WireGuard VPN configuration guide
 - [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md) – Architecture and principles
 - [specs/FUNCTIONALITIES.md](specs/FUNCTIONALITIES.md) – Detailed functionality specifications
 - [specs/SECURITY.md](specs/SECURITY.md) – Security model and two-layer architecture

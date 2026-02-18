@@ -142,7 +142,7 @@ The client relies on the exact API contract documented in [specs/API_CONTRACT.md
 The remote Ollama server provides:
 - OpenAI-compatible `/v1` endpoints (native Ollama feature)
 - Anthropic-compatible `/v1/messages` endpoint (Ollama 0.5.0+)
-- Static IP access via VPN (192.168.100.10:11434)
+- Static IP access via VPN (192.168.250.20:11434)
 - Support for streaming, JSON mode, tool calling
 - No authentication required (VPN authentication provides security)
 
@@ -165,7 +165,7 @@ Aider automatically reads the environment variables and connects to remote Ollam
 Any tool that supports custom OpenAI base URLs will work automatically:
 ```bash
 # Environment variables are already set
-echo $OPENAI_API_BASE    # http://192.168.100.10:11434/v1
+echo $OPENAI_API_BASE    # http://192.168.250.20:11434/v1
 echo $OPENAI_API_KEY     # ollama
 ```
 
@@ -211,8 +211,8 @@ Running 40 tests
 
 === Environment Configuration Tests ===
 ✓ PASS Environment file exists (~/.ai-client/env)
-✓ PASS OLLAMA_API_BASE is set: http://192.168.100.10:11434
-✓ PASS OPENAI_API_BASE is set: http://192.168.100.10:11434/v1
+✓ PASS OLLAMA_API_BASE is set: http://192.168.250.20:11434
+✓ PASS OPENAI_API_BASE is set: http://192.168.250.20:11434/v1
 ✓ PASS OPENAI_API_KEY is set correctly: ollama
 • SKIP AIDER_MODEL is not set (optional)
 ✓ PASS Shell profile sources env file (/Users/vm/.zshrc)
@@ -227,7 +227,7 @@ Running 40 tests
 
 === Connectivity Tests ===
 ✓ PASS VPN connection is active
-✓ PASS Server is reachable (192.168.100.10)
+✓ PASS Server is reachable (192.168.250.20)
 ✓ PASS GET /v1/models returns valid JSON (1 models)
 
 ...

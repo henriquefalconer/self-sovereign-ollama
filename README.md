@@ -5,33 +5,50 @@
 
 # self-sovereign-ollama
 
-Secure remote access to Ollama on your hardware.
+**Ollama server setup for secure remote access.**
 
-Complete infrastructure for private AI inference using OpenWrt router, WireGuard VPN, and DMZ network segmentation. No third-party cloud services.
+This project documents how to configure Ollama on Apple Silicon for remote access with dual API support (OpenAI-compatible and Anthropic-compatible endpoints).
 
 ## Project Structure
 
 This monorepo contains two main components:
 
-- **server/** – Ollama server configuration with OpenWrt router + DMZ network segmentation
-- **client/** – Client-side setup and configuration for connecting to remote Ollama
+- **server/** – Ollama server configuration for macOS with dual API support
+- **client/** – Client-side setup for connecting to remote Ollama (Aider and Claude Code)
+
+## About Network Documentation
+
+**Important**: This repository also includes documentation of the network infrastructure I set up to enable remote access (`server/NETWORK_DOCUMENTATION.md`), but **the network setup is essentially a separate project** from the Ollama server configuration.
+
+**Why it's documented here:**
+- To serve as reference material for how I configured my specific network setup
+- To help others who might want to implement something similar
+- To document the complete end-to-end solution I built
+
+**What you should know:**
+- The network setup (OpenWrt router + WireGuard VPN + firewall configuration) is **optional** and represents one possible approach
+- You can use the server setup with any network architecture that provides remote access (Tailscale, Cloudflare Tunnel, direct port forwarding, etc.)
+- The network documentation reflects my specific configuration and may not match your needs or existing infrastructure
+
+**Focus of this repo**: Setting up and running Ollama with dual API support. The network layer is documented separately as a reference implementation.
+
+---
 
 ## Overview
 
-The self-sovereign-ollama project provides a complete solution for running Ollama on your own hardware with secure remote access via self-hosted WireGuard VPN, and zero public internet exposure.
+The self-sovereign-ollama project documents how to run Ollama on your own hardware with remote access.
 
 ### Server (ai-server)
 - Runs Ollama on a dedicated Apple Silicon Mac with high unified memory
-- **Two-layer security**: Network Perimeter (OpenWrt router + WireGuard VPN + DMZ isolation + Firewall) + AI Server (Ollama)
-- OpenWrt router provides VPN authentication, DMZ network segmentation, and port-level firewall rules
 - Exposes dual API: OpenAI-compatible `/v1` and Anthropic-compatible `/v1/messages` endpoints
-- Accessible only via WireGuard VPN (self-sovereign infrastructure)
-- 24/7 operation for on-demand inference
 - Supports both Aider (OpenAI API) and Claude Code (Anthropic API)
+- Native macOS service management via launchd
+- Configurable network binding (dedicated IP or all interfaces)
+- 24/7 operation for on-demand inference
 
 ### Client (ai-client)
 - macOS environment setup and configuration
-- Connects to remote Ollama server via WireGuard VPN
+- Connects to remote Ollama server (requires network connectivity - see Network Documentation section)
 - Configures tools (Aider, optionally Claude Code) to use remote Ollama automatically
 - Optional: Claude Code can use either Anthropic cloud API or remote Ollama backend
 - Zero manual configuration per session
@@ -57,57 +74,71 @@ See [client/README.md](client/README.md) for client installation and usage.
 - Optional backend switching via shell alias
 - Version compatibility checking and management tools included
 
-## Network Architecture
+## Network Documentation (Reference Implementation)
+
+**Note**: This section documents the specific network architecture I configured for my setup. This is **not required** for running Ollama - it's just one possible approach to enable remote access. You can use any network solution that provides connectivity to your Ollama server (VPN, reverse proxy, direct port forwarding, etc.).
+
+**My network configuration** (see [server/NETWORK_DOCUMENTATION.md](server/NETWORK_DOCUMENTATION.md) for complete details):
 
 ```
-Client → WireGuard VPN (Router) → Firewall (port 11434 only) → Ollama (DMZ: 192.168.100.10)
+Client → WireGuard VPN (OpenWrt Router) → Firewall (port 11434 only) → Ollama (192.168.250.20)
 ```
 
-**Two-layer security:**
-1. **Network Perimeter** (Router + VPN + DMZ + Firewall) - Controls WHO can reach the server and WHAT ports are accessible
-2. **AI Server** (Ollama on DMZ) - Provides inference services
+**Architecture:**
+- OpenWrt router running WireGuard VPN server (behind ISP router)
+- Firewall-based isolation for AI server on LAN
+- VPN provides secure remote access without public exposure of port 11434
 
-**Network Topology:**
+**My network topology:**
 - **VPN subnet**: 10.10.10.0/24 (WireGuard clients)
-- **DMZ subnet**: 192.168.100.0/24 (Ollama server isolated from LAN)
-- **LAN subnet**: 192.168.1.0/24 (Admin only, no VPN/DMZ access)
+- **LAN subnet**: 192.168.250.0/24 (All devices including isolated AI server)
+- **AI server**: 192.168.250.20 (isolated via firewall rules)
+- **Upstream network**: 192.168.2.0/24 (ISP router, OpenWrt is behind it)
 
-**Properties:**
-- **No public internet exposure** – All access via self-hosted WireGuard VPN
-- **Self-sovereign infrastructure** – No third-party VPN services (was Tailscale in v1)
-- **DMZ isolation** – Server separated from LAN, controlled firewall access
-- **Per-peer VPN authentication** – WireGuard public key cryptography
-- **Port-level firewall** – Only port 11434 accessible from VPN
-- **Dual API support** – OpenAI-compatible `/v1/*` and Anthropic-compatible `/v1/messages`
-- Works with any tool supporting custom OpenAI or Anthropic base URLs
+**Why I chose this:**
+- Self-sovereign infrastructure (no third-party VPN services)
+- Complete control over network security
+- No reliance on cloud services
+- Firewall-based isolation without needing separate physical networks
+
+**Alternative approaches** you might prefer:
+- Tailscale or other mesh VPN services
+- Cloudflare Tunnel or similar reverse proxies
+- Direct port forwarding (if you're comfortable with public exposure)
+- SSH tunneling
+- Any other method that connects your client to your server's port 11434
 
 ## Requirements
 
-### Router (Network Perimeter)
-- OpenWrt 23.05 LTS or later
-- WireGuard support (built into OpenWrt kernel)
-- Wired Ethernet ports (no Wi-Fi infrastructure)
-- Public IP with port forwarding capability (for VPN endpoint)
-
-### Server
+### Server (Core Requirements)
 - Apple Silicon Mac (M-series) with ≥96 GB unified memory recommended
 - macOS 14 Sonoma or later
-- Wired Ethernet connection to router (DMZ network)
-- High upload bandwidth (≥100 Mb/s recommended)
+- Homebrew
+- Network connectivity (any method - see Network Documentation section for my approach)
+- High upload bandwidth (≥100 Mb/s recommended for remote streaming)
 - 24/7 operation capability
 
 ### Client
 - macOS 14 Sonoma or later
 - Homebrew
 - Python 3.10+
-- WireGuard client (installed via Homebrew)
+- Network access to server (method depends on your network setup)
+
+### Network Infrastructure (My Specific Setup - Optional Reference)
+
+**Note**: These requirements only apply if you want to replicate my network configuration. See [server/NETWORK_DOCUMENTATION.md](server/NETWORK_DOCUMENTATION.md).
+
+- OpenWrt-compatible router (or use existing router with WireGuard support)
+- WireGuard VPN (or alternative like Tailscale, Cloudflare Tunnel, etc.)
+- Ability to configure firewall rules (for server isolation)
+- Public IP or DDNS (if exposing VPN endpoint to internet)
 
 ## Documentation
 
 ### Setup Guides
 - [server/README.md](server/README.md) – Server overview and quick reference
 - [server/SETUP.md](server/SETUP.md) – Server installation instructions
-- [server/ROUTER_SETUP.md](server/ROUTER_SETUP.md) – OpenWrt router + WireGuard VPN configuration guide
+- [server/NETWORK_DOCUMENTATION.md](server/NETWORK_DOCUMENTATION.md) – OpenWrt router + WireGuard VPN configuration guide
 - [client/README.md](client/README.md) – Client overview and quick reference
 - [client/SETUP.md](client/SETUP.md) – Client installation instructions
 
@@ -119,44 +150,32 @@ Client → WireGuard VPN (Router) → Firewall (port 11434 only) → Ollama (DMZ
 - [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) – Implementation status and roadmap
 - [AGENTS.md](AGENTS.md) – Component responsibilities and coordination
 
-## Security Model
+## Security Model (My Network Implementation)
 
-### Two-Layer Defense in Depth
+**Note**: This security model describes my specific network configuration. If you use a different approach (Tailscale, Cloudflare Tunnel, etc.), your security model will differ.
 
-**Layer 1: Network Perimeter (OpenWrt Router)**
+### My Two-Layer Architecture
+
+**Layer 1: Network Perimeter (OpenWrt Router + WireGuard)**
 - **WireGuard VPN**: Per-peer public key authentication (cryptographic identity)
-- **DMZ Network Segmentation**: Server isolated from LAN (192.168.100.0/24)
-- **Firewall Rules**: VPN → DMZ port 11434 only, DMZ → LAN denied
+- **Firewall-Based Isolation**: Server isolated from other LAN devices via firewall rules
+- **Firewall Rules**: VPN → AI server port 11434 only, AI server → other LAN devices denied
 - **Self-Sovereign Infrastructure**: No third-party VPN services
 
-**Layer 2: AI Server (Ollama on DMZ)**
-- **Direct API Exposure**: All Ollama endpoints accessible to authorized VPN clients
-- **DMZ Binding**: Ollama listens on DMZ interface (192.168.100.10)
-- **Isolation from LAN**: Cannot access personal files or services on LAN
+**Layer 2: AI Server (Ollama)**
+- **Direct API Exposure**: All Ollama endpoints accessible to authorized network clients
+- **Dedicated IP Binding**: Ollama listens on dedicated LAN IP (192.168.250.20)
+- **Firewall Isolation**: Cannot access other LAN devices or services
 
-### Security Properties
+### Security Properties (My Setup)
 
 - ✅ **Cryptographic authentication** - WireGuard per-peer public keys (no shared secrets)
-- ✅ **Network isolation** - DMZ separated from LAN, controlled access from VPN
+- ✅ **Network isolation** - Server isolated from other LAN devices via firewall
 - ✅ **Port-level control** - Only port 11434 accessible from VPN clients
 - ✅ **Self-sovereign** - No reliance on third-party VPN services
-- ✅ **Defense in depth** - VPN authentication + DMZ isolation + port firewall
+- ✅ **Defense in depth** - VPN authentication + firewall isolation + port firewall
 
-### Architectural Trade-offs (v1 → v2)
-
-**v1 (Tailscale + HAProxy + Loopback):**
-- ✅ Endpoint allowlisting (HAProxy filtered specific paths)
-- ✅ Three independent layers
-- ❌ Third-party dependency (Tailscale mesh VPN)
-- ❌ Additional proxy layer (HAProxy maintenance)
-
-**v2 (WireGuard + DMZ + Firewall):**
-- ✅ Self-sovereign infrastructure (WireGuard on own router)
-- ✅ Simpler architecture (two layers, no application proxy)
-- ✅ Lower latency (direct Ollama access)
-- ❌ Port-level control only (all Ollama endpoints accessible to VPN clients)
-
-See `server/specs/SECURITY.md` for complete security model documentation.
+**Your security model will depend on your network approach**. See [server/NETWORK_DOCUMENTATION.md](server/NETWORK_DOCUMENTATION.md) for details on my configuration, and [server/specs/SECURITY.md](server/specs/SECURITY.md) for security considerations.
 
 ## License
 

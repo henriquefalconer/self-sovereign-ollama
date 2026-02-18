@@ -2,7 +2,7 @@
 
 This project is intentionally separated into two independent layers:
 
-1. **Network Perimeter Layer** (VPN + DMZ + Router)
+1. **Network Perimeter Layer** (VPN + Firewall + Router)
 2. **AI Server Layer** (Ollama-based inference service)
 
 Each layer can function independently.
@@ -16,8 +16,8 @@ The **intended deployment model combines both** for defense-in-depth.
 - No Wi-Fi infrastructure
 - No public exposure of inference port (11434)
 - WireGuard VPN for all remote access
-- Segmented DMZ network for AI server
-- No LAN access from VPN clients
+- Firewall-based isolation for AI server
+- No access to other LAN devices from VPN clients or AI server
 - Zero third-party cloud dependencies
 - Run Ollama exclusively on a dedicated, always-on machine (separate from clients)
 
@@ -33,64 +33,63 @@ The **intended deployment model combines both** for defense-in-depth.
 
 ---
 
-## LAYER 1 — NETWORK PERIMETER (Router, VPN, Segmentation)
+## LAYER 1 — NETWORK PERIMETER (Router, VPN, Firewall)
 
 ### Physical Topology
 
 ```
 Internet
    ↓
-ISP Modem (bridge mode preferred)
+ISP Router (192.168.2.0/24)
    ↓
-OpenWrt Router (public IP)
+OpenWrt Router (behind ISP router)
    ↓
-DMZ Interface / VLAN
+LAN (192.168.250.0/24)
    ↓
-self-sovereign-ollama server
+self-sovereign-ollama server (192.168.250.20, firewall-isolated)
 ```
 
-Optional:
-- LAN interface exists only for router administration
+Note:
+- OpenWrt router may be behind an existing ISP router (double-NAT)
+- Port forwarding at ISP level required for external VPN access
 
 ### Network Interfaces
 
 **Router interfaces:**
-- `wan` - Public internet
-- `lan` - Admin only (optional)
-- `dmz` - Dedicated network for AI server
+- `wan` - Connection to ISP router (192.168.2.90)
+- `lan` - Local network (192.168.250.0/24) including isolated AI server
 - `wg0` - WireGuard VPN
 
 **Example subnets:**
-- LAN: `192.168.1.0/24` (admin only)
-- DMZ: `192.168.100.0/24` (default, configurable)
+- Upstream (ISP): `192.168.2.0/24`
+- LAN: `192.168.250.0/24` (all devices including isolated server)
 - VPN: `10.10.10.0/24`
 
 **AI server static IP (example):**
-- `192.168.100.10` (default, configurable during install)
+- `192.168.250.20` (configurable during install, isolated via firewall)
 
 ### Firewall Policy (Authoritative)
 
 ```
 WAN → any: deny (except WireGuard UDP port)
-WAN → DMZ: deny
 WAN → LAN: deny
 
-VPN → DMZ:
-  allow TCP 11434 to AI server (192.168.100.10)
+VPN → LAN (AI server):
+  allow TCP 11434 to AI server (192.168.250.20)
   optionally allow SSH (22) if explicitly configured
 
-VPN → LAN: deny
+VPN → LAN (other devices): deny
 VPN → WAN: deny
 
-DMZ → LAN: deny
-DMZ → WAN: allow (outbound internet for model downloads, OS updates)
+AI server → LAN (other devices): deny
+AI server → WAN: allow (outbound internet for model downloads, OS updates)
 
-LAN → DMZ: optional (admin only)
+LAN (admin) → AI server: optional (admin access if needed)
 ```
 
 **Critical**: Only the WireGuard UDP port is exposed publicly. Port 11434 is **never** port-forwarded.
 
-See `ROUTER_SETUP.md` for complete router configuration instructions.
+See `NETWORK_DOCUMENTATION.md` for complete router configuration instructions.
 
 ---
 
@@ -99,7 +98,7 @@ See `ROUTER_SETUP.md` for complete router configuration instructions.
 ### Core Principles
 
 - Provide OpenAI-compatible and Anthropic-compatible HTTP APIs
-- Bind to DMZ interface only (recommended) or all interfaces
+- Bind to AI server interface only (recommended) or all interfaces
 - No built-in authentication layer (security via network perimeter)
 - No public exposure assumed
 - No knowledge of VPN or firewall topology
@@ -124,19 +123,20 @@ See `ROUTER_SETUP.md` for complete router configuration instructions.
                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │              OpenWrt Router (Perimeter)                  │
-│         Firewall: VPN → DMZ (port 11434 only)           │
+│      Firewall: VPN → AI server (port 11434 only)        │
 └────────────────────┬─────────────────────────────────────┘
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────┐
-│                DMZ Network (192.168.100.0/24)            │
+│                LAN Network (192.168.250.0/24)            │
 │                                                          │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │  self-sovereign-ollama server (192.168.100.10)       │ │
-│  │  • Bind: 192.168.100.10:11434 (DMZ interface)      │ │
+│  │  self-sovereign-ollama server (192.168.250.20)       │ │
+│  │  • Bind: 192.168.250.20:11434 (dedicated LAN IP)   │ │
 │  │  • Serves: OpenAI + Anthropic APIs                 │ │
 │  │  • Outbound: Internet allowed (model pulls, updates)│ │
-│  │  • Inbound: Only from VPN                          │ │
+│  │  • Inbound: Only from VPN (firewall controlled)    │ │
+│  │  • Isolated: Cannot reach other LAN devices        │ │
 │  └────────────────────────────────────────────────────┘ │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
@@ -146,17 +146,17 @@ See `ROUTER_SETUP.md` for complete router configuration instructions.
 
 1. **Router Firewall (Network Layer)** - Controls **who** can reach the server
    - Only WireGuard UDP port exposed publicly
-   - VPN clients can only reach DMZ port 11434
-   - No VPN → LAN access
-   - No DMZ → LAN access
+   - VPN clients can only reach AI server port 11434
+   - No VPN → LAN (other devices) access
+   - No AI server → LAN (other devices) access
 
 2. **WireGuard VPN (Cryptographic Layer)** - Controls **which devices** can access
    - Per-peer public key authentication
    - No shared secrets
    - Peer revocation by removing public key from router
 
-3. **DMZ Isolation (Network Segmentation Layer)** - Controls **what** the server can access
-   - Server cannot reach LAN resources
+3. **Firewall Isolation Layer** - Controls **what** the server can access
+   - Server cannot reach other LAN resources
    - Server can reach internet (for models, updates)
    - Outbound traffic is logged (optional)
 
@@ -168,7 +168,7 @@ See `SECURITY.md` for complete security model documentation.
 
 ### Ollama Configuration
 
-- Bind Ollama to **DMZ interface** (`192.168.100.10:11434`) - recommended
+- Bind Ollama to **dedicated LAN IP** (`192.168.250.20:11434`) - recommended
   - Alternative: Bind to all interfaces (`0.0.0.0:11434`) - simpler but less explicit
 - Configured via `OLLAMA_HOST` environment variable in LaunchAgent plist
 - Let Ollama handle model loading, inference, and unloading automatically
@@ -206,8 +206,8 @@ Ollama exposes both OpenAI-compatible and Anthropic-compatible APIs **directly**
 Ollama runs as user-level LaunchAgent (not root):
 
 **Ollama LaunchAgent** (`~/Library/LaunchAgents/com.ollama.plist`)
-- Binds `192.168.100.10:11434` (DMZ interface) or `0.0.0.0:11434` (all interfaces)
-- Sets `OLLAMA_HOST=192.168.100.10` (or `0.0.0.0`)
+- Binds `192.168.250.20:11434` (dedicated LAN IP) or `0.0.0.0:11434` (all interfaces)
+- Sets `OLLAMA_HOST=192.168.250.20` (or `0.0.0.0`)
 - Auto-start on login (`RunAtLoad=true`)
 - Auto-restart on crash (`KeepAlive=true`)
 - Logs to `/tmp/ollama.stdout.log`, `/tmp/ollama.stderr.log`
@@ -238,21 +238,21 @@ tail -f /tmp/ollama.stderr.log
 - All remote access goes through WireGuard VPN hosted on OpenWrt router
 - No port forwarding of inference port (11434) - only WireGuard UDP port exposed
 - Per-peer public key authentication (no shared secrets)
-- VPN clients reach server via static DMZ IP: `192.168.100.10:11434`
-- No dynamic DNS or hostname resolution needed
+- VPN clients reach server via static LAN IP: `192.168.250.20:11434`
+- No dynamic DNS or hostname resolution needed (direct IP access)
 
-### DMZ Network Configuration
+### Firewall-Based Isolation Configuration
 
-- Server assigned static IP in DMZ subnet: `192.168.100.10` (default, configurable)
-- DMZ subnet: `192.168.100.0/24` (default, configurable)
-- DMZ isolated from LAN (firewall enforced)
-- DMZ allows outbound internet (for model downloads, OS updates)
+- Server assigned static IP on LAN: `192.168.250.20` (configurable)
+- LAN subnet: `192.168.250.0/24` (configurable)
+- Server isolated from other LAN devices via firewall rules
+- Server allows outbound internet (for model downloads, OS updates)
   - **Trade-off**: Allows automatic updates but increases attack surface
   - **Alternative**: Air-gapped with manual model loading (see SECURITY.md)
 
 ### Network Binding
 
-- Ollama bound to DMZ interface (`192.168.100.10`) - recommended for explicit control
+- Ollama bound to dedicated LAN IP (`192.168.250.20`) - recommended for explicit control
 - Alternative: Bind to all interfaces (`0.0.0.0`) - simpler but less explicit
 - Firewall enforces access control (only VPN clients can reach port 11434)
 - No application-layer authentication (security via network perimeter)
@@ -277,13 +277,14 @@ tail -f /tmp/ollama.stderr.log
 
 **Current approach (v2):**
 ```
-Client → WireGuard (router) → Firewall → Ollama (DMZ)
+Client → WireGuard (router) → Firewall → Ollama (isolated LAN)
 ```
 - Self-sovereign infrastructure (no third-party VPN service)
 - Router controls all ingress (single point of administration)
 - Firewall enforces access control (no application-layer proxy needed)
 - Simpler architecture (fewer moving parts)
 - Full control over network topology
+- No separate physical or VLAN DMZ required
 
 ### Why OpenWrt + WireGuard?
 
@@ -300,13 +301,14 @@ Client → WireGuard (router) → Firewall → Ollama (DMZ)
 - **Standard** - Built into Linux kernel
 - **No shared secrets** - Per-peer public key authentication
 
-### Why DMZ Network Segmentation?
+### Why Firewall-Based Isolation?
 
-- **Isolation** - Server cannot access LAN resources
+- **Isolation** - Server cannot access other LAN resources
 - **Principle of least privilege** - Server only has internet access, nothing more
-- **Blast radius containment** - If server compromised, attacker cannot pivot to LAN
-- **Clear security boundary** - Easy to audit and monitor
-- **Flexibility** - Can host multiple DMZ services on same segment
+- **Blast radius containment** - If server compromised, attacker cannot pivot to other LAN devices
+- **Clear security boundary** - Easy to audit and monitor via firewall rules
+- **Simplicity** - No separate physical interface or VLAN configuration needed
+- **Flexibility** - Easy to add/remove isolation rules as needed
 
 ---
 
@@ -350,21 +352,21 @@ For this use case (single-user or small team):
 
 ```
 Client 1 ─┐
-Client 2 ─┼→ WireGuard VPN → Router Firewall → Ollama (192.168.100.10)
+Client 2 ─┼→ WireGuard VPN → Router Firewall → Ollama (192.168.250.20)
 Client 3 ─┘
 ```
 
 All clients share single Ollama instance. This is the standard deployment.
 
-### Future: Multiple DMZ Services (Optional)
+### Future: Multiple Isolated Services (Optional)
 
 ```
-                                 ┌→ Ollama (192.168.100.10)
-Client ─→ WireGuard ─→ Router ──┼→ Other Service (192.168.100.11)
-                                 └→ Another Service (192.168.100.12)
+                                 ┌→ Ollama (192.168.250.20)
+Client ─→ WireGuard ─→ Router ──┼→ Other Service (192.168.250.21)
+                                 └→ Another Service (192.168.250.22)
 ```
 
-DMZ can host multiple services, each with dedicated firewall rules.
+Multiple services can be isolated on the same LAN, each with dedicated firewall rules.
 
 **Out of scope for v2**, but architecture supports it.
 
@@ -373,7 +375,7 @@ DMZ can host multiple services, each with dedicated firewall rules.
 For environments without VPN requirements:
 
 ```
-Client (LAN) ─→ Ollama (192.168.1.10)
+Client (LAN) ─→ Ollama (192.168.250.20)
 ```
 
 Server can run on LAN without router/VPN layer. Use Layer 2 (AI server) specs only.
@@ -426,18 +428,18 @@ These can be added later without changing the base two-layer architecture.
 - Check router WireGuard configuration and firewall rules
 - Typical recovery: reconfigure WireGuard, redistribute peer configs
 
-### Network Segmentation Failure
+### Firewall Isolation Failure
 
-- If DMZ firewall rules misconfigured, server might reach LAN or vice versa
+- If firewall rules misconfigured, server might reach other LAN devices or vice versa
 - Monitor router firewall logs for unexpected traffic
-- Validate firewall rules regularly (see `ROUTER_SETUP.md`)
+- Validate firewall rules regularly (see `NETWORK_DOCUMENTATION.md`)
 
 ### Configuration Error
 
 - If Ollama binding wrong: VPN clients cannot connect
 - If router firewall rules wrong: VPN clients blocked or have excessive access
 - Verify binding: `lsof -i :11434` on server
-- Verify firewall: test from VPN client with `nc -zv 192.168.100.10 11434`
+- Verify firewall: test from VPN client with `nc -zv 192.168.250.20 11434`
 
 **Defense in depth**: Network perimeter provides security even if Ollama has vulnerabilities.
 
@@ -449,12 +451,12 @@ These can be added later without changing the base two-layer architecture.
 
 **Ollama health (from server):**
 ```bash
-curl http://192.168.100.10:11434/api/version
+curl http://192.168.250.20:11434/api/version
 ```
 
 **End-to-end health (from VPN client):**
 ```bash
-curl http://192.168.100.10:11434/v1/models
+curl http://192.168.250.20:11434/v1/models
 ```
 
 **Router health:**
@@ -477,7 +479,7 @@ iptables -L -n -v  # Firewall rules with counters
 
 ### Optional Monitoring
 
-Router can log (configure in `ROUTER_SETUP.md`):
+Router can log (configure in `NETWORK_DOCUMENTATION.md`):
 - Connection attempts to port 11434
 - WireGuard handshakes
 - Firewall blocks
@@ -494,17 +496,18 @@ This architecture provides:
 > **Self-sovereign remote access via defense-in-depth**
 
 Two independent layers:
-1. **Network Perimeter (Router + VPN + DMZ)** - Controls who can reach the server and enforces network isolation
+1. **Network Perimeter (Router + VPN + Firewall)** - Controls who can reach the server and enforces isolation
 2. **AI Server (Ollama)** - Provides inference service, unaware of perimeter security
 
 Benefits:
 - ✅ Self-sovereign infrastructure (no third-party VPN service)
 - ✅ Single ingress point (router controls all remote access)
-- ✅ Network segmentation (DMZ isolation from LAN)
+- ✅ Firewall-based isolation (server isolated from other LAN devices)
 - ✅ Modern cryptography (WireGuard per-peer keys)
-- ✅ Defense in depth (firewall + DMZ + binding)
+- ✅ Defense in depth (firewall + isolation rules + binding)
 - ✅ Negligible performance impact (<1ms VPN overhead)
 - ✅ Modular architecture (layers can be implemented independently)
+- ✅ Simple deployment (no separate physical or VLAN DMZ required)
 
 All while maintaining:
 - Zero public exposure of inference port

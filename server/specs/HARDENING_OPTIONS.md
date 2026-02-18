@@ -15,14 +15,14 @@ It's a design space—a menu of orthogonal controls you can draw from later as n
 The current two-layer architecture provides:
 
 ```
-Layer 1: Network Perimeter (Router + VPN + DMZ + Firewall) → Controls WHO can reach the server and WHAT networks can communicate
-Layer 2: AI Server (Ollama on DMZ) → Provides inference services
+Layer 1: Network Perimeter (Router + VPN + Firewall + Firewall) → Controls WHO can reach the server and WHAT networks can communicate
+Layer 2: AI Server (Ollama on isolated LAN) → Provides inference services
 ```
 
 This baseline provides:
 - ✅ Network perimeter security (OpenWrt firewall rules)
 - ✅ VPN authentication (WireGuard per-peer public keys)
-- ✅ DMZ isolation (separated from LAN, controlled access from VPN)
+- ✅ firewall isolation (separated from LAN, controlled access from VPN)
 - ✅ Self-sovereign infrastructure (no third-party VPN services)
 - ✅ Direct Ollama API exposure (all endpoints accessible to authorized VPN clients)
 
@@ -45,7 +45,7 @@ These controls act **before** a request reaches Ollama.
 - Simplified architecture (two layers instead of three)
 - Lower maintenance burden (no HAProxy configuration)
 - Ollama endpoints are designed for authorized client access
-- DMZ isolation + VPN authentication provides network-level security
+- firewall isolation + VPN authentication provides network-level security
 
 **If endpoint allowlisting becomes necessary**:
 - **Option 1**: Add nginx/HAProxy reverse proxy between VPN and Ollama
@@ -65,16 +65,16 @@ uci add firewall rule
 uci set firewall.@rule[-1].name='Allow-VPN-to-Ollama'
 uci set firewall.@rule[-1].src='vpn'
 uci set firewall.@rule[-1].dest='dmz'
-uci set firewall.@rule[-1].dest_ip='192.168.100.10'
+uci set firewall.@rule[-1].dest_ip='192.168.250.20'
 uci set firewall.@rule[-1].dest_port='11434'
 uci set firewall.@rule[-1].proto='tcp'
 uci set firewall.@rule[-1].target='ACCEPT'
 ```
 
 **Mitigates**:
-- Access to non-Ollama services on DMZ server
+- Access to non-Ollama services on isolated LAN server
 - Port scanning attacks
-- Lateral movement within DMZ
+- Lateral movement withon isolated LAN
 
 **Cost**: None (iptables rule matching)
 
@@ -309,7 +309,7 @@ iptables -A FORWARD -s 10.10.10.99 -i wg0 -o br-dmz -p tcp --dport 11434 -j DROP
 **Implementation**: nginx/HAProxy reverse proxy with client cert validation
 ```nginx
 server {
-    listen 192.168.100.10:11434 ssl;
+    listen 192.168.250.20:11434 ssl;
     ssl_client_certificate /etc/nginx/ca.pem;
     ssl_verify_client on;
 
@@ -357,7 +357,7 @@ iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 -j ACCEPT
 
 **Captures**:
 - Source IP (VPN client: 10.10.10.X)
-- Destination IP (Ollama: 192.168.100.10)
+- Destination IP (Ollama: 192.168.250.20)
 - Timestamp
 - TCP connection establishment
 
@@ -391,7 +391,7 @@ iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 -j ACCEPT
 **Enhancement options**:
 - **Option 1**: Reverse proxy (nginx/HAProxy) with access logs
 - **Option 2**: Modify Ollama source to add structured logging
-- **Option 3**: Network packet capture (tcpdump on DMZ interface)
+- **Option 3**: Network packet capture (tcpdump on isolated LAN interface)
 - **Option 4**: Wait for Ollama to add configurable logging
 
 **Recommendation**: Use firewall connection logs (D1) for attribution, Ollama logs for debugging
@@ -481,9 +481,9 @@ These are architectural changes, not config additions.
 
 **Status**: ✅ Already part of v2 architecture
 
-**Implementation**: DMZ network segmentation
-- DMZ subnet: 192.168.100.0/24
-- LAN subnet: 192.168.1.0/24
+**Implementation**: firewall-based server isolation
+- LAN subnet: 192.168.250.0/24
+- LAN subnet: 192.168.250.0/24
 - VPN subnet: 10.10.10.0/24
 - Firewall rules:
   - VPN → DMZ: port 11434 only
@@ -500,7 +500,7 @@ These are architectural changes, not config additions.
 
 ### E2. VM/Container Boundary (Additional Layer)
 
-**Capability**: Run Ollama inside VM or container on DMZ server
+**Capability**: Run Ollama inside VM or container on isolated LAN server
 
 **Options**:
 - **VM**: Ollama inside UTM/Parallels VM on Mac Mini
@@ -511,7 +511,7 @@ These are architectural changes, not config additions.
 - Kernel-level isolation (Ollama can't escape to host)
 - Resource limits (CPU, memory, disk quotas)
 - Snapshot/restore capability
-- Additional layer beyond DMZ network isolation
+- Additional layer beyond isolated LAN isolation
 
 **Trade-offs**:
 - Performance overhead (GPU passthrough complexity)
@@ -579,7 +579,7 @@ When evaluating future hardening options:
    - Can it be rolled back easily?
 
 4. **What's the baseline alternative?**
-   - Network isolation (WireGuard VPN + DMZ) already in place
+   - Network isolation (WireGuard VPN + Firewall) already in place
    - Firewall rules (port-level filtering) already in place
 
 5. **Is there a simpler solution?**
@@ -643,7 +643,7 @@ All options can be added via OpenWrt firewall/iptables changes:
 **Method 1: UCI (persistent, recommended)**
 ```bash
 # SSH to router
-ssh root@192.168.1.1
+ssh root@192.168.250.1
 
 # Add firewall rule via UCI
 uci add firewall rule
@@ -737,7 +737,7 @@ Key principles:
 
 **Start with visibility (connection logs), add controls only when data justifies them.**
 
-The current baseline (WireGuard VPN + DMZ isolation + Port-specific firewall rules) is strong. Don't add hardening prematurely—add it when you have evidence it's needed.
+The current baseline (WireGuard VPN + firewall isolation + Port-specific firewall rules) is strong. Don't add hardening prematurely—add it when you have evidence it's needed.
 
 **v2 architecture trade-offs**:
 - ✅ Simpler: No application-layer proxy to maintain

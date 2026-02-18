@@ -10,7 +10,7 @@
   - Private key stored securely in `~/.ai-client/wireguard/privatekey`
   - Public key stored in `~/.ai-client/wireguard/publickey`
   - Displays public key for user to send to router admin
-- Prompts for server IP (default: 192.168.100.10)
+- Prompts for server IP (default: 192.168.250.20)
 - Prompts for VPN server public key (provided by router admin)
 - Prompts for VPN server endpoint (public IP:port, e.g., `1.2.3.4:51820`)
 - Generates WireGuard configuration file
@@ -99,7 +99,7 @@ Comprehensive test script that validates all client functionality. Designed to r
   - Check for active WireGuard interface (e.g., `utun` device on macOS)
   - Verify VPN tunnel shows connected status
   - Warn if VPN not connected (skip server tests, show connection instructions)
-- Test network connectivity to server IP (192.168.100.10)
+- Test network connectivity to server IP (192.168.250.20)
 - `GET /v1/models` returns JSON model list from server
 - `GET /v1/models/{model}` returns model details (if models available)
 - `POST /v1/chat/completions` non-streaming request succeeds

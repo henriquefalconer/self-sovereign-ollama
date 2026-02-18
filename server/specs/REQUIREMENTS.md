@@ -18,11 +18,11 @@
 
 - Homebrew
 - Ollama (installed via Homebrew if missing)
-- **OpenWrt router with WireGuard VPN** (configured separately - see ROUTER_SETUP.md)
+- **OpenWrt router with WireGuard VPN** (configured separately - see NETWORK_DOCUMENTATION.md)
 
 ## Router Requirements (Layer 1)
 
-**Separate from server** - See `ROUTER_SETUP.md` for complete requirements:
+**Separate from server** - See `NETWORK_DOCUMENTATION.md` for complete requirements:
 
 - OpenWrt-compatible hardware
 - OpenWrt 23.05 LTS or later
@@ -40,19 +40,19 @@ Ollama runs as a user-level LaunchAgent (not root) for security. Sudo may be req
 ## Network Requirements
 
 ### Server (Layer 2)
-- Static IP on DMZ network (default: 192.168.100.10)
-- Ethernet connection to router DMZ interface
+- Static IP on isolated LAN (default: 192.168.250.20)
+- Ethernet connection to router dedicated LAN IP
 - No Wi-Fi infrastructure
 
 ### Router (Layer 1)
 - Public IP address (for WireGuard VPN server)
-- DMZ network configured (default: 192.168.100.0/24)
+- isolated LAN configured (default: 192.168.250.0/24)
 - WireGuard VPN configured with per-peer keys
-- Firewall rules configured (see ROUTER_SETUP.md)
+- Firewall rules configured (see NETWORK_DOCUMENTATION.md)
 - No public exposure of port 11434 (only WireGuard UDP)
 
 ### Internet Connectivity
-- Outbound internet from DMZ (for model downloads, OS updates)
+- Outbound internet from isolated server (for model downloads, OS updates)
   - Trade-off: Allows automatic updates but increases attack surface
   - Alternative: Fully air-gapped DMZ with manual model loading
 - No inbound internet access except WireGuard VPN

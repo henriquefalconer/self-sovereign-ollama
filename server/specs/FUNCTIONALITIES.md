@@ -6,7 +6,7 @@ This specification documents functionality across both architectural layers.
 LAYER 1 — NETWORK PERIMETER FUNCTIONALITY
 ------------------------------------------------------------
 
-See `ROUTER_SETUP.md` for complete router configuration.
+See `NETWORK_DOCUMENTATION.md` for complete router configuration.
 
 ## Router Responsibilities
 
@@ -27,7 +27,7 @@ See `ROUTER_SETUP.md` for complete router configuration.
 - Optionally allow LAN → DMZ (admin access)
 
 **DMZ Network:**
-- Dedicated subnet for AI server (default: 192.168.100.0/24)
+- Dedicated subnet for AI server (default: 192.168.250.0/24)
 - Router provides DHCP or static IP assignment
 - Router provides DNS resolution (optional)
 - Router provides internet gateway for DMZ
@@ -42,7 +42,7 @@ See `ROUTER_SETUP.md` for complete router configuration.
 **Network isolation:**
 - DMZ server cannot reach LAN resources
 - VPN clients cannot reach LAN resources
-- LAN devices cannot initiate connections to DMZ (unless explicitly allowed)
+- LAN devices cannot initiate connections to AI server (unless explicitly allowed)
 
 **Blast radius containment:**
 - If DMZ server compromised, attacker cannot pivot to LAN
@@ -55,8 +55,8 @@ LAYER 2 — AI SERVER CAPABILITIES
 ## Core Functionality
 
 - One-time installer that configures Ollama as LaunchAgent service
-- Static IP configuration on DMZ network
-- Ollama bound to DMZ interface (or all interfaces if configured)
+- Static IP configuration on isolated LAN
+- Ollama bound to AI server interface (or all interfaces if configured)
 - Uninstaller that removes server-side configuration (Ollama LaunchAgent, optionally revert to DHCP)
 - Optional model pre-warming script for boot-time loading
 - Comprehensive test script for automated validation (network, service, API, security)
@@ -71,7 +71,7 @@ LAYER 2 — AI SERVER CAPABILITIES
 **Purpose**: Model loading, inference, and API serving
 
 **Functionality**:
-- Bind to DMZ interface (`192.168.100.10:11434`) or all interfaces (`0.0.0.0:11434`)
+- Bind to AI server interface (`192.168.250.20:11434`) or all interfaces (`0.0.0.0:11434`)
 - Serve OpenAI-compatible API at `/v1/*`
 - Serve Anthropic-compatible API at `/v1/messages` (Ollama 0.5.0+)
 - Serve Ollama native API at `/api/*`
@@ -99,7 +99,7 @@ LAYER 2 — AI SERVER CAPABILITIES
 
 ### OpenAI-Compatible API
 
-**Base URL**: `http://192.168.100.10:11434/v1`
+**Base URL**: `http://192.168.250.20:11434/v1`
 
 **Primary endpoints**:
 - `POST /v1/chat/completions` - Chat completions (streaming & non-streaming)
@@ -123,7 +123,7 @@ LAYER 2 — AI SERVER CAPABILITIES
 
 ### Anthropic-Compatible API
 
-**Base URL**: `http://192.168.100.10:11434/v1/messages`
+**Base URL**: `http://192.168.250.20:11434/v1/messages`
 
 **Endpoint**:
 - `POST /v1/messages` - Anthropic Messages API (Ollama 0.5.0+)
@@ -147,7 +147,7 @@ See `ANTHROPIC_COMPATIBILITY.md` for complete specification.
 
 ### Ollama Native API
 
-**Base URL**: `http://192.168.100.10:11434/api`
+**Base URL**: `http://192.168.250.20:11434/api`
 
 **Endpoints**:
 - `GET /api/version` - Ollama version info
@@ -172,7 +172,7 @@ See `ANTHROPIC_COMPATIBILITY.md` for complete specification.
 **Key settings**:
 - `ProgramArguments`: Path to Ollama binary
 - `EnvironmentVariables`:
-  - `OLLAMA_HOST`: DMZ interface IP or 0.0.0.0
+  - `OLLAMA_HOST`: dedicated LAN IP IP or 0.0.0.0
   - `OLLAMA_ORIGINS`: CORS configuration (optional)
 - `RunAtLoad`: true (start on login)
 - `KeepAlive`: true (auto-restart on crash)
@@ -221,7 +221,7 @@ lsof -i :11434
 
 # Or manually pull and load
 ollama pull qwen2.5-coder:32b
-curl -X POST http://192.168.100.10:11434/v1/chat/completions \
+curl -X POST http://192.168.250.20:11434/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "qwen2.5-coder:32b", "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1}'
 ```
@@ -237,7 +237,7 @@ curl -X POST http://192.168.100.10:11434/v1/chat/completions \
 **Firewall rate limiting** (optional):
 - Can be configured on router to limit connection rate
 - Requires OpenWrt iptables rules
-- See `ROUTER_SETUP.md` for instructions
+- See `NETWORK_DOCUMENTATION.md` for instructions
 
 ### Memory Management
 
@@ -259,10 +259,10 @@ curl -X POST http://192.168.100.10:11434/v1/chat/completions \
 ### Static IP Setup
 
 **Configured during installation**:
-- Prompts for DMZ subnet (default: 192.168.100.0/24)
-- Prompts for server IP (default: 192.168.100.10)
+- Prompts for LAN subnet (default: 192.168.250.0/24)
+- Prompts for server IP (default: 192.168.250.20)
 - Configures macOS network interface via `networksetup`
-- Sets router as gateway (192.168.100.1)
+- Sets router as gateway (192.168.250.1)
 - Optionally configures DNS
 
 **Verification**:
@@ -271,22 +271,22 @@ curl -X POST http://192.168.100.10:11434/v1/chat/completions \
 networksetup -getinfo "Ethernet"
 
 # Should show:
-# IP address: 192.168.100.10
+# IP address: 192.168.250.20
 # Subnet mask: 255.255.255.0
-# Router: 192.168.100.1
+# Router: 192.168.250.1
 ```
 
 ### Router Connectivity
 
 **Requirements**:
-- Router must be reachable at DMZ gateway IP (192.168.100.1)
+- Router must be reachable at DMZ gateway IP (192.168.250.1)
 - Router must provide internet access for model downloads
 - Router must have DMZ firewall rules configured
 
 **Test connectivity**:
 ```bash
 # Test router
-ping -c 3 192.168.100.1
+ping -c 3 192.168.250.1
 
 # Test internet
 ping -c 3 8.8.8.8
@@ -335,10 +335,10 @@ pmset -g
 **Health checks**:
 ```bash
 # From server
-curl http://192.168.100.10:11434/v1/models
+curl http://192.168.250.20:11434/v1/models
 
 # From VPN client
-curl http://192.168.100.10:11434/v1/models
+curl http://192.168.250.20:11434/v1/models
 ```
 
 **Logs**:
@@ -373,8 +373,8 @@ This functionality design provides:
 > **Secure inference service through network perimeter defense**
 
 Two-layer architecture:
-1. **Network Perimeter** (Router) - Controls who can reach the server (WireGuard VPN + firewall + DMZ isolation)
-2. **AI Server** (Ollama) - Serves inference APIs on DMZ interface
+1. **Network Perimeter** (Router) - Controls who can reach the server (WireGuard VPN + firewall + firewall isolation)
+2. **AI Server** (Ollama) - Serves inference APIs on isolated LAN interface
 
 All while maintaining:
 - Dual API support (OpenAI + Anthropic)

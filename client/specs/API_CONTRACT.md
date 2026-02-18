@@ -17,9 +17,9 @@ The self-sovereign-ollama ai-server exposes the OpenAI API at the following base
 
 ## Base URL
 
-`http://192.168.100.10:11434/v1`
+`http://192.168.250.20:11434/v1`
 
-- IP address is static (default: 192.168.100.10, configurable)
+- IP address is static (default: 192.168.250.20, configurable)
 - Port is always 11434
 - Accessible only from VPN clients
 
@@ -58,8 +58,8 @@ The self-sovereign-ollama ai-server exposes the OpenAI API at the following base
 ## Environment Variables the client must set
 
 ```bash
-OLLAMA_API_BASE=http://192.168.100.10:11434
-OPENAI_API_BASE=http://192.168.100.10:11434/v1
+OLLAMA_API_BASE=http://192.168.250.20:11434
+OPENAI_API_BASE=http://192.168.250.20:11434/v1
 OPENAI_API_KEY=ollama
 AIDER_MODEL=ollama/<model-name>                       # optional
 ```
@@ -81,8 +81,8 @@ AIDER_MODEL=ollama/<model-name>                       # optional
 
 **Troubleshooting**:
 - Verify VPN connection: Check WireGuard tunnel status
-- Test connectivity: `ping 192.168.100.10`
-- Test port: `nc -zv 192.168.100.10 11434`
+- Test connectivity: `ping 192.168.250.20`
+- Test port: `nc -zv 192.168.250.20 11434`
 
 ## This contract is the only API surface the client may depend on
 
@@ -96,7 +96,7 @@ The self-sovereign-ollama ai-server also exposes Anthropic Messages API compatib
 
 ### Base URL
 
-`http://192.168.100.10:11434/v1/messages`
+`http://192.168.250.20:11434/v1/messages`
 
 - Same IP and port as OpenAI API
 - Different endpoint path (`/v1/messages` vs `/v1/chat/completions`)
@@ -170,13 +170,13 @@ export ANTHROPIC_API_KEY=sk-ant-...
 ```bash
 export ANTHROPIC_AUTH_TOKEN=ollama
 export ANTHROPIC_API_KEY=""
-export ANTHROPIC_BASE_URL=http://192.168.100.10:11434
+export ANTHROPIC_BASE_URL=http://192.168.250.20:11434
 ```
 
 **Shell alias for easy switching:**
 ```bash
 # Recommended: alias for local backend
-alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://192.168.100.10:11434 claude --dangerously-skip-permissions'
+alias claude-ollama='ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" ANTHROPIC_BASE_URL=http://192.168.250.20:11434 claude --dangerously-skip-permissions'
 
 # Usage:
 claude --model opus-4-6        # Uses Anthropic cloud
@@ -258,8 +258,8 @@ Ollama's Anthropic compatibility is relatively new and may diverge from Anthropi
 
 **Troubleshooting**:
 - Verify VPN connection: Check WireGuard tunnel status
-- Test connectivity: `ping 192.168.100.10`
-- Test port: `nc -zv 192.168.100.10 11434`
+- Test connectivity: `ping 192.168.250.20`
+- Test port: `nc -zv 192.168.250.20 11434`
 
 ### This contract is the only API surface the client may depend on
 

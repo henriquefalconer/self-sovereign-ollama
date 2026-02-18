@@ -5,12 +5,12 @@
 The server exposes APIs through a **two-layer architecture**:
 
 ```
-VPN Client → WireGuard (Router) → Firewall → Ollama (192.168.100.10:11434)
+VPN Client → WireGuard (Router) → Firewall → Ollama (192.168.250.20:11434)
 ```
 
 - **VPN Clients** connect via WireGuard tunnel to router
 - **Router Firewall** allows VPN → DMZ port 11434 only
-- **Ollama** bound to DMZ interface, serves all API endpoints directly
+- **Ollama** bound to AI server interface, serves all API endpoints directly
 
 This provides **network perimeter security** - only VPN-authenticated clients can reach the server.
 
@@ -36,7 +36,7 @@ This provides **network perimeter security** - only VPN-authenticated clients ca
 ### Layer 3: Ollama Binding
 
 **Ollama listens on:**
-- DMZ interface: `192.168.100.10:11434` (recommended)
+- dedicated LAN IP: `192.168.250.20:11434` (recommended)
 - Or all interfaces: `0.0.0.0:11434` (simpler configuration)
 
 ---
@@ -58,7 +58,7 @@ Both served by the same Ollama process with no additional Ollama configuration r
 
 ### Client Perspective
 
-- HTTP API at `http://192.168.100.10:11434/v1`
+- HTTP API at `http://192.168.250.20:11434/v1`
 - Fully OpenAI-compatible schema (chat completions endpoint)
 - Accessible only from VPN clients
 
@@ -97,7 +97,7 @@ Both served by the same Ollama process with no additional Ollama configuration r
 
 ### Client Perspective
 
-- HTTP API at `http://192.168.100.10:11434/v1/messages`
+- HTTP API at `http://192.168.250.20:11434/v1/messages`
 - Anthropic Messages API compatibility layer
 - Experimental feature (Ollama 0.5.0+)
 - Accessible only from VPN clients
@@ -128,9 +128,9 @@ Both served by the same Ollama process with no additional Ollama configuration r
 ### DMZ Network
 
 **Server static IP:**
-- IP: `192.168.100.10` (default, configurable during install)
-- Subnet: `192.168.100.0/24` (default, configurable)
-- Gateway: `192.168.100.1` (router)
+- IP: `192.168.250.20` (default, configurable during install)
+- Subnet: `192.168.250.0/24` (default, configurable)
+- Gateway: `192.168.250.1` (router)
 - DNS: Router or public DNS (configurable)
 
 **Configured via:**
@@ -148,7 +148,7 @@ networksetup -getinfo "Ethernet"
 **Test connectivity:**
 ```bash
 # Router
-ping -c 3 192.168.100.1
+ping -c 3 192.168.250.1
 
 # Internet
 ping -c 3 8.8.8.8
@@ -160,7 +160,7 @@ ping -c 3 8.8.8.8
 
 ### Environment Variables
 
-- **OLLAMA_HOST**: Set to DMZ IP (`192.168.100.10`) or all interfaces (`0.0.0.0`)
+- **OLLAMA_HOST**: Set to AI server IP (`192.168.250.20`) or all interfaces (`0.0.0.0`)
 - **OLLAMA_ORIGINS**: Optional CORS configuration (if browser clients needed)
 
 ### LaunchAgent Configuration
@@ -180,7 +180,7 @@ ping -c 3 8.8.8.8
 lsof -i :11434
 
 # Should show:
-# - 192.168.100.10:11434 (DMZ interface), or
+# - 192.168.250.20:11434 (dedicated LAN IP), or
 # - *:11434 (all interfaces if 0.0.0.0)
 ```
 
@@ -188,7 +188,7 @@ lsof -i :11434
 
 ## Router Management Interface
 
-**Configuration**: See `ROUTER_SETUP.md` for complete guide
+**Configuration**: See `NETWORK_DOCUMENTATION.md` for complete guide
 
 ### WireGuard VPN
 
@@ -208,14 +208,14 @@ lsof -i :11434
 
 **SSH** (recommended):
 ```bash
-ssh root@192.168.100.1  # From DMZ server
-ssh root@192.168.1.1     # From LAN
+ssh root@192.168.250.1  # From DMZ server
+ssh root@192.168.250.1     # From LAN
 ```
 
 **LuCI Web Interface**:
 ```
-http://192.168.100.1  # From DMZ server
-http://192.168.1.1    # From LAN
+http://192.168.250.1  # From DMZ server
+http://192.168.250.1    # From LAN
 ```
 
 ---
@@ -259,7 +259,7 @@ http://192.168.1.1    # From LAN
 1. **Install WireGuard client** on device
 2. **Import VPN configuration** (provided by router admin)
 3. **Connect to VPN** - establishes encrypted tunnel
-4. **Connect to server** - `http://192.168.100.10:11434`
+4. **Connect to server** - `http://192.168.250.20:11434`
 
 See `../client/specs/` for complete client setup instructions.
 
@@ -269,9 +269,9 @@ See `../client/specs/` for complete client setup instructions.
 
 ### Layer 1: Router Firewall (Who can reach server)
 
-- Controls: Network access to DMZ
+- Controls: Network access to AI server
 - Enforcement: Firewall rules (iptables)
-- Management: Router configuration (see `ROUTER_SETUP.md`)
+- Management: Router configuration (see `NETWORK_DOCUMENTATION.md`)
 
 ### Layer 2: WireGuard VPN (Who can authenticate)
 
@@ -332,7 +332,7 @@ The architecture enables future enhancements **without re-architecture**:
 - Intrusion detection system (Snort, Suricata)
 - Web application firewall (ModSecurity)
 
-**Application layer** (add reverse proxy in DMZ if needed):
+**Application layer** (add reverse proxy on isolated LAN if needed):
 - Request size limits
 - Endpoint allowlisting (v1 HAProxy-style)
 - API key authentication
@@ -352,7 +352,7 @@ This interface design provides:
 **Network perimeter:**
 - Router controls all ingress (single point of administration)
 - WireGuard VPN provides per-peer authentication
-- DMZ isolation prevents lateral movement
+- firewall isolation prevents lateral movement
 
 **Server simplicity:**
 - Ollama serves all endpoints directly (no proxy)
@@ -362,7 +362,7 @@ This interface design provides:
 **Security properties:**
 - No public exposure of inference port
 - Cryptographic authentication (WireGuard keys)
-- Network segmentation (DMZ isolation)
+- Network segmentation (firewall isolation)
 - Minimal attack surface
 
 Two architectural layers, complete network control.

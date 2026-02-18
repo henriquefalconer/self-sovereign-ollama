@@ -862,16 +862,16 @@ else
     fail "Plist file missing"
 fi
 
-# Test 17: OLLAMA_HOST in plist (check for DMZ or all-interfaces binding)
+# Test 17: OLLAMA_HOST in plist (check for dedicated IP or all-interfaces binding)
 show_progress "Checking OLLAMA_HOST in plist..."
 if grep -q "OLLAMA_HOST" "$PLIST_PATH"; then
     PLIST_HOST=$(grep -A1 "OLLAMA_HOST" "$PLIST_PATH" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
     if [[ "$PLIST_HOST" =~ ^192\.168\.100\.[0-9]+$ ]] || [[ "$PLIST_HOST" == "0.0.0.0" ]]; then
-        pass "OLLAMA_HOST=$PLIST_HOST configured in plist (v2 DMZ or all-interfaces binding)"
+        pass "OLLAMA_HOST=$PLIST_HOST configured in plist (v2 dedicated IP or all-interfaces binding)"
     elif [[ "$PLIST_HOST" == "127.0.0.1" ]]; then
-        fail "OLLAMA_HOST=127.0.0.1 found in plist (v1 loopback-only binding, should be DMZ IP or 0.0.0.0 for v2)"
+        fail "OLLAMA_HOST=127.0.0.1 found in plist (v1 loopback-only binding, should be dedicated IP or 0.0.0.0 for v2)"
     else
-        fail "OLLAMA_HOST=$PLIST_HOST found in plist (unexpected value, should be DMZ IP or 0.0.0.0)"
+        fail "OLLAMA_HOST=$PLIST_HOST found in plist (unexpected value, should be dedicated IP or 0.0.0.0)"
     fi
 else
     fail "OLLAMA_HOST not found in plist"
@@ -885,11 +885,11 @@ show_progress "Checking Ollama service binding..."
 if command -v lsof &> /dev/null; then
     OLLAMA_BINDING=$(lsof -i :11434 -sTCP:LISTEN 2>/dev/null | grep ollama || echo "")
     if echo "$OLLAMA_BINDING" | grep -qE "192\.168\.100\.[0-9]+:11434"; then
-        pass "Ollama binds to DMZ interface (192.168.100.x:11434) - secure"
+        pass "Ollama binds to dedicated IP (192.168.250.x:11434) - secure"
     elif echo "$OLLAMA_BINDING" | grep -q "0.0.0.0:11434"; then
         pass "Ollama binds to all interfaces (0.0.0.0:11434) - accessible"
     elif echo "$OLLAMA_BINDING" | grep -q "127.0.0.1:11434"; then
-        fail "Ollama binds to loopback only (127.0.0.1:11434) - v1 configuration, should be DMZ IP or 0.0.0.0 for v2"
+        fail "Ollama binds to loopback only (127.0.0.1:11434) - v1 configuration, should be dedicated IP or 0.0.0.0 for v2"
     else
         skip "Could not determine Ollama binding from lsof output"
     fi
@@ -897,12 +897,12 @@ else
     skip "lsof not available - cannot verify binding" "Install lsof or check manually"
 fi
 
-# Test 19: DMZ IP access
-show_progress "Testing DMZ IP access..."
+# Test 19: dedicated IP access
+show_progress "Testing dedicated IP access..."
 if curl -sf "http://${OLLAMA_HOST}:11434/v1/models" &> /dev/null; then
-    pass "DMZ IP access (${OLLAMA_HOST}) works"
+    pass "dedicated IP access (${OLLAMA_HOST}) works"
 else
-    fail "DMZ IP access failed"
+    fail "dedicated IP access failed"
 fi
 
 echo ""
@@ -910,10 +910,10 @@ echo "=== Network Configuration Tests (v2) ==="
 
 # Test 20: Router gateway connectivity
 show_progress "Testing router gateway connectivity..."
-if ping -c 3 192.168.100.1 &> /dev/null; then
-    pass "Router gateway (192.168.100.1) is reachable"
+if ping -c 3 192.168.250.1 &> /dev/null; then
+    pass "Router gateway (192.168.250.1) is reachable"
 else
-    fail "Router gateway (192.168.100.1) is not reachable"
+    fail "Router gateway (192.168.250.1) is not reachable"
 fi
 
 # Test 21: DNS resolution
@@ -929,16 +929,16 @@ show_progress "Testing internet connectivity..."
 if curl -sf --connect-timeout 5 https://www.google.com &> /dev/null; then
     pass "Internet connectivity works"
 else
-    fail "Internet connectivity failed (DMZ may be isolated from WAN)"
+    fail "Internet connectivity failed (Server may be isolated from WAN)"
 fi
 
 # Test 23: LAN isolation (should fail - this is expected)
 show_progress "Testing LAN isolation..."
-# Try to ping a typical LAN address (192.168.1.1 - common router IP)
-if ! ping -c 2 -W 2 192.168.1.1 &> /dev/null; then
-    pass "DMZ is isolated from LAN (expected security posture)"
+# Try to ping a typical LAN address (192.168.250.1 - common router IP)
+if ! ping -c 2 -W 2 192.168.250.1 &> /dev/null; then
+    pass "Server is isolated from other LAN devices (expected security posture)"
 else
-    warn "DMZ can reach LAN (192.168.1.1) - firewall may not be properly configured"
+    warn "Server can reach other LAN devices (192.168.250.1) - firewall may not be properly configured"
     pass "LAN isolation test completed (with warning)"
 fi
 
@@ -968,7 +968,7 @@ else
     echo "  • Restart service: launchctl bootout gui/\$(id -u)/com.ollama && launchctl bootstrap gui/\$(id -u) ~/Library/LaunchAgents/com.ollama.plist"
     echo "  • Check logs: tail -f /tmp/ollama.stderr.log"
     echo "  • Verify port 11434: lsof -i :11434"
-    echo "  • Check WireGuard VPN: See server/ROUTER_SETUP.md"
+    echo "  • Check WireGuard VPN: See server/NETWORK_DOCUMENTATION.md"
     echo ""
     exit 1
 fi
