@@ -638,7 +638,6 @@ else
     echo ""
     echo -e "     ${BLUE}aider --model ollama/model-name${NC}    # Aider with specific model"
     echo -e "     ${BLUE}claude-ollama${NC}                      # Claude Code via local Ollama"
-    echo -e "     ${BLUE}claude${NC}                             # Claude Code via Anthropic cloud"
     echo ""
     echo "  Troubleshooting:"
     echo "  • Ensure router admin has added your public key as a VPN peer"

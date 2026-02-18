@@ -154,11 +154,18 @@ fi
 
 # If multiple interfaces, let user choose
 INTERFACE=""
-if [[ $(echo "$INTERFACES" | wc -l) -gt 1 ]]; then
+INTERFACE_COUNT=$(echo "$INTERFACES" | wc -l | tr -d ' ')
+if [[ "$INTERFACE_COUNT" -gt 1 ]]; then
     echo "Multiple ethernet interfaces found:"
     echo "$INTERFACES" | nl
-    read -p "Select interface number: " INTERFACE_NUM
-    INTERFACE=$(echo "$INTERFACES" | sed -n "${INTERFACE_NUM}p")
+    while true; do
+        read -p "Select interface number (1-${INTERFACE_COUNT}): " INTERFACE_NUM
+        if [[ "$INTERFACE_NUM" =~ ^[0-9]+$ ]] && [[ "$INTERFACE_NUM" -ge 1 ]] && [[ "$INTERFACE_NUM" -le "$INTERFACE_COUNT" ]]; then
+            INTERFACE=$(echo "$INTERFACES" | sed -n "${INTERFACE_NUM}p")
+            break
+        fi
+        error "Invalid selection — enter a number between 1 and ${INTERFACE_COUNT}"
+    done
 else
     INTERFACE="$INTERFACES"
 fi
