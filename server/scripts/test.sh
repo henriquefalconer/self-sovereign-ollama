@@ -16,7 +16,6 @@ NC='\033[0m' # No Color
 TESTS_PASSED=0
 TESTS_FAILED=0
 TESTS_SKIPPED=0
-TOTAL_TESTS=29
 CURRENT_TEST=0
 
 # Flags
@@ -45,6 +44,20 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Compute expected test count based on flags.
+# Tests 1-5, 12-23 always run = 17 base.
+# Test 6 (model detail) is added in test 5 if a model is found.
+# Tests 7-11 run only when not --skip-model-tests and a model is found.
+# Tests 21-26 run only when not --skip-model-tests, not --skip-anthropic-tests, and a model is found.
+# All three model-dependent groups are adjusted in test 5 once model availability is known.
+TOTAL_TESTS=17
+if [[ "$SKIP_MODEL_TESTS" != "true" ]]; then
+    TOTAL_TESTS=$((TOTAL_TESTS + 5))   # tests 7-11
+    if [[ "$SKIP_ANTHROPIC_TESTS" != "true" ]]; then
+        TOTAL_TESTS=$((TOTAL_TESTS + 6))  # tests 21-26
+    fi
+fi
 
 # Output helpers
 show_progress() {
@@ -128,7 +141,6 @@ OLLAMA_HOST=$(detect_ollama_host)
 # Banner
 echo "================================================"
 echo "  self-sovereign-ollama ai-server Test Suite"
-echo "  Running $TOTAL_TESTS tests"
 echo "================================================"
 echo ""
 
@@ -187,13 +199,29 @@ if [[ "$MODELS_RESPONSE" != "FAILED" ]] && echo "$MODELS_RESPONSE" | jq -e '.obj
     MODEL_COUNT=$(echo "$MODELS_RESPONSE" | jq -r '.data | length')
     pass "GET /v1/models returns valid JSON (${MODEL_COUNT} models)"
 
-    # Store first model for later tests
+    # Store first model for later tests and finalise TOTAL_TESTS
     if [[ "$MODEL_COUNT" -gt 0 ]]; then
         FIRST_MODEL=$(echo "$MODELS_RESPONSE" | jq -r '.data[0].id')
+        TOTAL_TESTS=$((TOTAL_TESTS + 1))  # test 6 (model detail) will run
         info "First available model: $FIRST_MODEL"
+    else
+        # No models – model-dependent tests won't run; subtract them from total
+        if [[ "$SKIP_MODEL_TESTS" != "true" ]]; then
+            TOTAL_TESTS=$((TOTAL_TESTS - 5))  # tests 7-11 won't run
+            if [[ "$SKIP_ANTHROPIC_TESTS" != "true" ]]; then
+                TOTAL_TESTS=$((TOTAL_TESTS - 6))  # tests 21-26 won't run
+            fi
+        fi
     fi
 else
     fail "GET /v1/models failed or returned invalid JSON"
+    # Can't reach server – model-dependent tests won't run
+    if [[ "$SKIP_MODEL_TESTS" != "true" ]]; then
+        TOTAL_TESTS=$((TOTAL_TESTS - 5))
+        if [[ "$SKIP_ANTHROPIC_TESTS" != "true" ]]; then
+            TOTAL_TESTS=$((TOTAL_TESTS - 6))
+        fi
+    fi
 fi
 
 # Test 6: GET /v1/models/{model}
