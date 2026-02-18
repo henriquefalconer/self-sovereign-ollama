@@ -150,22 +150,8 @@ fi
 info "Using Python: $PYTHON_PATH"
 
 echo ""
-echo "=== Step 5: WireGuard VPN Setup ==="
+echo "=== Step 5: WireGuard VPN Configuration ==="
 echo ""
-
-# Check if WireGuard is installed
-if ! command -v wg &> /dev/null && ! brew list wireguard-tools &> /dev/null 2>&1; then
-    info "Installing WireGuard tools..."
-    if brew install wireguard-tools > /tmp/wireguard-install.log 2>&1; then
-        info "✓ WireGuard tools installed"
-    else
-        error "Failed to install WireGuard tools"
-        cat /tmp/wireguard-install.log
-        exit 1
-    fi
-else
-    info "✓ WireGuard tools already installed"
-fi
 
 # Create WireGuard config directory
 WG_DIR="$HOME/.ai-client/wireguard"
@@ -178,7 +164,32 @@ WG_PUBLIC_KEY="$WG_DIR/publickey"
 
 if [[ ! -f "$WG_PRIVATE_KEY" ]]; then
     info "Generating WireGuard keypair..."
-    wg genkey | tee "$WG_PRIVATE_KEY" | wg pubkey > "$WG_PUBLIC_KEY"
+
+    # Method 1: Use wg command if already available
+    if command -v wg &>/dev/null; then
+        wg genkey | tee "$WG_PRIVATE_KEY" | wg pubkey > "$WG_PUBLIC_KEY"
+    # Method 2: Use Python cryptography library
+    elif "$PYTHON_PATH" -c "from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey" 2>/dev/null; then
+        KEYPAIR_OUTPUT=$("$PYTHON_PATH" - <<'PYEOF'
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, PrivateFormat, NoEncryption
+import base64
+priv = X25519PrivateKey.generate()
+priv_bytes = priv.private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())
+pub_bytes = priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+print(base64.b64encode(priv_bytes).decode())
+print(base64.b64encode(pub_bytes).decode())
+PYEOF
+)
+        echo "$KEYPAIR_OUTPUT" | head -n1 > "$WG_PRIVATE_KEY"
+        echo "$KEYPAIR_OUTPUT" | tail -n1 > "$WG_PUBLIC_KEY"
+    else
+        # Method 3: Install wireguard-tools for key generation
+        info "Installing wireguard-tools for key generation..."
+        brew install wireguard-tools > /tmp/wireguard-install.log 2>&1 || fatal "Failed to install wireguard-tools"
+        wg genkey | tee "$WG_PRIVATE_KEY" | wg pubkey > "$WG_PUBLIC_KEY"
+    fi
+
     chmod 600 "$WG_PRIVATE_KEY"
     chmod 644 "$WG_PUBLIC_KEY"
     info "✓ Keypair generated"
@@ -247,14 +258,12 @@ fi
 # AllowedIPs: VPN subnet + AI server IP only (no split tunneling beyond what's needed)
 WG_ALLOWED_IPS="10.10.10.0/24, $SERVER_IP/32"
 
-# Generate WireGuard configuration
-# wg-quick expects configs in $(brew --prefix)/etc/wireguard/
-WG_SYSTEM_DIR="$(brew --prefix)/etc/wireguard"
-mkdir -p "$WG_SYSTEM_DIR"
-WG_CONFIG="$WG_SYSTEM_DIR/wg0.conf"
-info "Generating WireGuard configuration..."
+# Generate WireGuard tunnel configuration file for App Store WireGuard import
+DOWNLOADS_DIR="$HOME/Downloads"
+WG_IMPORT_FILE="$DOWNLOADS_DIR/ai-server-vpn.conf"
+info "Generating WireGuard tunnel configuration file..."
 
-cat > "$WG_CONFIG" <<EOF
+cat > "$WG_IMPORT_FILE" <<EOF
 [Interface]
 PrivateKey = $(cat "$WG_PRIVATE_KEY")
 Address = $WG_CLIENT_IP/24
@@ -266,25 +275,27 @@ AllowedIPs = $WG_ALLOWED_IPS
 PersistentKeepalive = 25
 EOF
 
-chmod 600 "$WG_CONFIG"
-info "✓ WireGuard configuration generated: $WG_CONFIG"
-echo "  AllowedIPs set to: $WG_ALLOWED_IPS"
-echo "  To change this (e.g. to route all traffic through VPN), edit: $WG_CONFIG"
+chmod 600 "$WG_IMPORT_FILE"
+info "✓ Tunnel configuration saved: $WG_IMPORT_FILE"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "${BLUE}WireGuard Configuration:${NC}"
+echo -e "${BLUE}WireGuard Tunnel Configuration:${NC}"
 echo ""
-cat "$WG_CONFIG"
+cat "$WG_IMPORT_FILE"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Connection instructions
-warn "Next Steps for VPN Connection:"
-echo "  1. Wait for router admin confirmation (peer added)"
-echo "  2. Import configuration: sudo wg-quick up wg0"
-echo "  3. Verify: wg show"
+warn "Next Steps — Connect to VPN:"
+echo ""
+echo "  1. Install WireGuard from the Mac App Store:"
+echo "     https://apps.apple.com/app/wireguard/id1451685025"
+echo ""
+echo "  2. Open WireGuard → click '+' → 'Import tunnel(s) from file'"
+echo "     Select: $WG_IMPORT_FILE"
+echo ""
+echo "  3. Click 'Activate' to connect to the VPN"
 echo ""
 
 read -r -p "Press Enter after you have connected to the VPN to continue..." < /dev/tty
@@ -607,9 +618,7 @@ if [[ "$SERVER_REACHABLE" == "true" ]]; then
     echo ""
     echo "  3. VPN Management:"
     echo ""
-    echo -e "     ${BLUE}wg show${NC}                        # Check VPN status"
-    echo -e "     ${BLUE}sudo wg-quick down wg0${NC}        # Disconnect VPN"
-    echo -e "     ${BLUE}sudo wg-quick up wg0${NC}          # Reconnect VPN"
+    echo "     Use the WireGuard app to connect/disconnect the tunnel"
     echo ""
 else
     echo -e "  ✓ Aider installed: ${GREEN}ready${NC}"
@@ -622,11 +631,10 @@ else
     echo ""
     echo "  1. Connect to WireGuard VPN:"
     echo ""
-    echo -e "     ${BLUE}sudo wg-quick up wg0${NC}"
+    echo "     Open the WireGuard app and activate the 'ai-server-vpn' tunnel"
     echo ""
     echo "  2. Verify VPN connection:"
     echo ""
-    echo -e "     ${BLUE}wg show${NC}"
     echo -e "     ${BLUE}curl http://$SERVER_IP:11434/v1/models${NC}"
     echo ""
     echo "  3. Reload your shell:"
