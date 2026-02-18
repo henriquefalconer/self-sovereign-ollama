@@ -197,7 +197,7 @@ fi
 # Terminal reload reminder (inside summary box)
 if [[ ${#REMOVED_ITEMS[@]} -gt 0 ]]; then
     info "Important:"
-    echo "  Close and reopen your terminal, or run: exec \$SHELL"
+    echo "  Close and reopen your terminal, or run: exec $SHELL"
     echo "  (Changes will take effect in new terminal sessions)"
 fi
 
