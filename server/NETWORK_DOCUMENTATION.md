@@ -43,7 +43,7 @@ I already had an ISP router providing internet connectivity to my home network, 
 
 ## Prerequisites
 
-- OpenWrt-compatible router hardware (I used a TP-Link router)
+- OpenWrt-compatible router hardware
 - OpenWrt 23.05 LTS or later installed
 - Physical wired network connection to router (no Wi-Fi for administration)
 - Basic understanding of networking concepts (IP addresses, subnets, firewall rules)
@@ -79,20 +79,74 @@ Firewall zones:
 
 ---
 
+## Understanding Network Segmentation and Router Access
+
+**Critical concept**: The OpenWrt router creates **two separate network segments**:
+
+1. **Upstream side (WAN)**: 192.168.2.0/24 - ISP router's network
+2. **Downstream side (LAN)**: 192.168.250.0/24 - OpenWrt managed network
+
+These networks are **isolated from each other** - devices on one network cannot directly reach IPs on the other network without explicit routing rules.
+
+**What this means for router administration:**
+
+| Your Location | Which Router IP Works | Why |
+|--------------|----------------------|-----|
+| ISP router's network (192.168.2.x) | `192.168.2.90` (WAN) ✅ | You're on the same network as the WAN interface |
+| ISP router's network (192.168.2.x) | `192.168.250.1` (LAN) ❌ | Different network segment, no routing |
+| Directly connected to OpenWrt LAN port | `192.168.250.1` (LAN) ✅ | You're on the LAN network |
+| Directly connected to OpenWrt LAN port | `192.168.2.90` (WAN) ✅ | Router can bridge between its own interfaces |
+| VPN client (10.10.10.x) | Depends on firewall rules | Would need explicit rule (not configured by default) |
+
+**For most administration tasks** when working from your home WiFi/Ethernet, use: `ssh root@192.168.2.90`
+
+---
+
 ## Phase 1: Local Network Testing (No ISP Port Forwarding)
 
 In this phase, I configured the basic infrastructure for local testing before exposing the VPN to the internet.
 
 ### Part 1: Initial Router Access
 
-```bash
-# Connect via Ethernet cable to LAN port
-# Default IP: 192.168.1.1 (OpenWrt factory default)
-# Access via web browser: http://192.168.1.1
+**Understanding Router Access Points:**
 
-# Or via SSH (if enabled):
-ssh root@192.168.1.1
+The OpenWrt router has two network interfaces that you can use for administration:
+- **LAN interface** (192.168.250.1 after configuration) - Only accessible from devices connected to the router's LAN ports
+- **WAN interface** (192.168.2.90 in my setup) - Accessible from the ISP router's network (192.168.2.0/24)
+
+**Important**: Since the router sits behind the ISP router, **you cannot access the LAN interface (192.168.250.1) from your regular home network** (192.168.2.x). You have two options:
+
+#### Option A: Access via WAN Interface (From ISP Network)
+
+**When to use**: When connected to your ISP router's network (WiFi or Ethernet at 192.168.2.x)
+
+```bash
+# Access router via its WAN IP (after initial setup)
+ssh root@192.168.2.90
+
+# Or via web browser:
+# http://192.168.2.90
 ```
+
+This is what you'll use for **administration from your normal home network**.
+
+#### Option B: Access via LAN Interface (Physical Connection)
+
+**When to use**: When physically connected to the OpenWrt router's LAN port
+
+```bash
+# Connect via Ethernet cable directly to OpenWrt LAN port
+# Initially (factory default):
+ssh root@192.168.1.1
+
+# After changing LAN IP to 192.168.250.1:
+ssh root@192.168.250.1
+```
+
+**For initial setup**, I recommend:
+1. Connect laptop directly to OpenWrt LAN port via Ethernet
+2. Access router at factory default: `ssh root@192.168.1.1`
+3. After changing LAN IP, reconnect at: `ssh root@192.168.250.1`
 
 **Default credentials:**
 - Username: `root`
@@ -103,11 +157,45 @@ ssh root@192.168.1.1
 passwd
 ```
 
+#### Configure SSH Access
+
+I configured SSH (Dropbear) to ensure secure remote access:
+
+**Via LuCI Web Interface:**
+1. Navigate to **System → Administration**
+2. Under **SSH Access** (Dropbear Instance):
+   - **Enable Instance**: ☑ (checked)
+   - **Interface**: unspecified (listens on all interfaces)
+   - **Port**: 22
+   - **Password authentication**: ☑ (checked)
+   - **Allow root logins with password**: ☑ (checked)
+   - **Gateway Ports**: ◻ (unchecked)
+3. Click **Save** and close
+
+**Why these settings:**
+- Enables SSH on both WAN (192.168.2.90) and LAN (192.168.250.1) interfaces
+- Allows root login (needed for administration)
+- Uses password authentication (alternative: key-based authentication is more secure)
+
+#### Enable HTTPS for Web Interface
+
+For secure admin access via web browser:
+
+**Via LuCI Web Interface:**
+1. Navigate to **System → Administration**
+2. Under **HTTP(S) Access**:
+   - Enable **Redirect to HTTPS**: ☑ (checked)
+3. Click **Save** and close
+
+**Important**: After enabling HTTPS redirect, update your browser URL from `http://` to `https://` and reload the page:
+- Before: `http://192.168.2.90`
+- After: `https://192.168.2.90` (accept self-signed certificate warning)
+
 ---
 
 ### Part 2: Network Interface Configuration
 
-I changed the LAN subnet from the default 192.168.1.0/24 to 192.168.250.0/24 to avoid conflicts with my ISP router's network.
+I changed the LAN subnet from the default 192.168.1.0/24 to 192.168.250.0/24 (avoiding IP conflicts with my existing ISP router's network).
 
 **Via LuCI Web Interface:**
 1. Navigate to **Network → Interfaces**
@@ -125,9 +213,32 @@ uci commit network
 /etc/init.d/network restart
 ```
 
-**After this change, reconnect to the router at its new IP:**
+#### Disable DHCP Server on WAN Interface
+
+Since the OpenWrt router's WAN interface gets its IP from the upstream ISP router, I disabled the DHCP server on the WAN interface to avoid conflicts:
+
+**Via LuCI Web Interface:**
+1. Navigate to **Network → Interfaces**
+2. Click on **WAN** interface
+3. Go to **DHCP Server** tab
+4. Check **Ignore interface**: ☑ (checked)
+5. Click **Save** and close
+
+**Why this is needed:**
+- The WAN interface (192.168.2.90) is a client on the ISP router's network
+- Running a DHCP server on WAN would conflict with the ISP router's DHCP
+- This ensures the WAN interface only receives IP configuration, not serves it
+
+**After this change, reconnect to the router:**
+
+**Option 1: Via LAN interface (if physically connected to LAN port):**
 ```bash
 ssh root@192.168.250.1
+```
+
+**Option 2: Via WAN interface (if on ISP network 192.168.2.x):**
+```bash
+ssh root@192.168.2.90
 ```
 
 ---
@@ -140,8 +251,8 @@ ssh root@192.168.250.1
 # Update package lists
 opkg update
 
-# Install WireGuard and tools
-opkg install wireguard-tools luci-proto-wireguard luci-app-wireguard kmod-wireguard
+# Install WireGuard packages
+opkg install wireguard-tools luci-proto-wireguard kmod-wireguard
 
 # Reboot to load kernel module
 reboot
@@ -149,7 +260,20 @@ reboot
 
 #### Generate Server Keys
 
+**After the router reboots, reconnect via SSH:**
 ```bash
+# From your ISP network (192.168.2.x):
+ssh root@192.168.2.90
+
+# Or if directly connected to OpenWrt LAN port:
+ssh root@192.168.250.1
+```
+
+**Then generate WireGuard server keys:**
+```bash
+# Create wireguard directory
+mkdir -p /etc/wireguard
+
 # Generate server private key
 umask 077
 wg genkey > /etc/wireguard/server_private.key
@@ -185,10 +309,12 @@ uci commit network
 2. Click "Add new interface"
 3. Name: `wg0`
 4. Protocol: WireGuard VPN
-5. Private Key: (paste from `/etc/wireguard/server_private.key`)
-6. Listen Port: `51820`
-7. IP Addresses: `10.10.10.1/24`
-8. Save and Apply
+5. On the **General Settings** tab:
+   - **Private Key**: Paste your server private key (from `/etc/wireguard/server_private.key`)
+   - **Public Key**: Leave empty (auto-generated from private key)
+   - **Listen Port**: `51820`
+   - **IP Addresses**: Click **Add** and enter `10.10.10.1/24`
+6. Click **Save** and close
 
 #### Add WireGuard Peer (Client)
 
@@ -230,9 +356,14 @@ This is the key part - creating firewall zones and rules to isolate the AI serve
 **Via LuCI:**
 1. Navigate to **Network → Firewall**
 2. Go to **General Settings** tab
-3. Ensure default zones exist:
-   - **wan**: Input: reject, Output: accept, Forward: reject
-   - **lan**: Input: accept, Output: accept, Forward: accept
+3. Verify/configure default zones:
+   - **lan**:
+     - Input: accept, Output: accept, Forward: accept
+     - Masquerading: unchecked
+     - **Allow forward to destination zones**: Select `wan` (enables AI server internet access)
+   - **wan**:
+     - Input: reject, Output: accept, Forward: reject
+     - **Masquerading: checked** ✓ (enables NAT for internet access)
 4. Add **vpn** zone:
    - Name: `vpn`
    - Input: reject
@@ -243,7 +374,11 @@ This is the key part - creating firewall zones and rules to isolate the AI serve
 
 **Via UCI:**
 ```bash
-# VPN zone
+# Verify WAN zone has masquerading enabled (usually enabled by default)
+# If not enabled, set it:
+uci set firewall.@zone[1].masq='1'  # Assuming wan is zone[1]
+
+# Add VPN zone
 uci add firewall zone
 uci set firewall.@zone[-1].name='vpn'
 uci set firewall.@zone[-1].input='REJECT'
@@ -255,11 +390,25 @@ uci commit firewall
 /etc/init.d/firewall restart
 ```
 
-#### Configure Firewall Rules for AI Server Isolation
+#### Configure Traffic Rules for AI Server Isolation
 
-**Allow VPN → AI Server (port 11434 only):**
+**Rule 1: Allow VPN → AI Server (port 11434 only)**
+
+**Via LuCI:**
+1. Navigate to **Network → Firewall → Traffic Rules** tab
+2. Click **Add**
+3. Configure the rule:
+   - **Name**: `Allow-VPN-to-Ollama`
+   - **Protocol**: TCP
+   - **Source zone**: vpn
+   - **Destination zone**: lan
+   - **Destination address**: `192.168.250.20`
+   - **Destination port**: `11434`
+   - **Action**: accept
+4. Click **Save** and close
+
+**Via UCI:**
 ```bash
-# Via UCI
 uci add firewall rule
 uci set firewall.@rule[-1].name='Allow-VPN-to-Ollama'
 uci set firewall.@rule[-1].src='vpn'
@@ -273,16 +422,29 @@ uci commit firewall
 /etc/init.d/firewall restart
 ```
 
-**Block VPN → LAN (except AI server):**
-```bash
-# Via UCI - this is implicit through zone defaults
-# vpn zone has forward=REJECT, so all traffic is blocked by default
-# Only the specific rule above allows access to 192.168.250.20:11434
-```
+---
 
-**Isolate AI Server from other LAN devices:**
+**Rule 2: Block VPN → LAN (except AI server)**
+
+**Note**: This is implicit through zone defaults. The vpn zone has `forward=REJECT`, so all traffic is blocked by default. Only the specific rule above allows access to 192.168.250.20:11434.
+
+---
+
+**Rule 3: Isolate AI Server from other LAN devices**
+
+**Via LuCI:**
+1. Navigate to **Network → Firewall → Traffic Rules** tab
+2. Click **Add**
+3. Configure the rule:
+   - **Name**: `Block-AI-Server-to-LAN`
+   - **Source zone**: lan
+   - **Source address**: `192.168.250.20`
+   - **Destination zone**: lan
+   - **Action**: reject
+4. Click **Save & Apply**
+
+**Via UCI:**
 ```bash
-# Via UCI - block AI server from accessing other LAN devices
 uci add firewall rule
 uci set firewall.@rule[-1].name='Block-AI-Server-to-LAN'
 uci set firewall.@rule[-1].src='lan'
@@ -294,22 +456,11 @@ uci commit firewall
 /etc/init.d/firewall restart
 ```
 
-**Allow AI server outbound internet access:**
-```bash
-# Via UCI - allow AI server to reach WAN for updates and model downloads
-uci add firewall forwarding
-uci set firewall.@forwarding[-1].src='lan'
-uci set firewall.@forwarding[-1].dest='wan'
-
-# This is typically already configured by default
-# Verify with: uci show firewall | grep forwarding
-```
-
 ---
 
 ### Part 5: Static IP for AI Server
 
-I configured the AI server with a static IP address for consistency.
+I configured the AI server with a static IP address for consistency. **I used Option B** (configuring directly on the server) for my setup.
 
 **Option A: DHCP Static Lease on Router**
 
@@ -359,21 +510,24 @@ ping 8.8.8.8  # Should succeed
 ping 192.168.250.100  # Should fail (if firewall rules correct)
 ```
 
-**From a VPN client on the same LAN (for testing):**
+**From a device on the local home network (testing through WAN):**
 ```bash
-# Connect to VPN (local testing, endpoint is 192.168.250.1:51820)
+# From your laptop on home network (192.168.2.x)
+# Connect to VPN using OpenWrt's WAN IP as endpoint: 192.168.2.90:51820
 # Then test:
 
 ping 10.10.10.1  # VPN server should respond
-curl http://192.168.250.20:11434/v1/models  # Should reach Ollama
+curl http://192.168.250.20:11434/v1/models  # Should reach Ollama through VPN
 ping 192.168.250.1  # LAN gateway - should fail (VPN clients blocked from LAN)
 ```
+
+**Note**: This tests the VPN through the WAN interface (192.168.2.90) from your regular home network, which is how it will work in production (before ISP port forwarding is added).
 
 ---
 
 ## Phase 2: External Access (With ISP Port Forwarding)
 
-After verifying local functionality, I configured port forwarding on my ISP router to expose the WireGuard VPN to the internet.
+As a final step to enable remote access from anywhere, I configured port forwarding on my ISP router to expose the WireGuard VPN to the internet.
 
 ### Part 7: ISP Router Port Forwarding
 
@@ -392,12 +546,23 @@ This allows external VPN clients to reach the OpenWrt WireGuard server via my pu
 
 ---
 
-### Part 8: OpenWrt WAN Firewall Rule
+### Part 8: OpenWrt WAN Traffic Rules
 
-Ensure OpenWrt accepts WireGuard traffic from WAN:
+Ensure OpenWrt accepts WireGuard traffic from WAN (this allows external VPN connections to reach the router).
 
+**Via LuCI:**
+1. Navigate to **Network → Firewall → Traffic Rules** tab
+2. Click **Add**
+3. Configure the rule:
+   - **Name**: `Allow-WireGuard`
+   - **Protocol**: UDP
+   - **Source zone**: wan
+   - **Destination port**: `51820`
+   - **Action**: accept
+4. Click **Save & Apply**
+
+**Via UCI:**
 ```bash
-# Via UCI
 uci add firewall rule
 uci set firewall.@rule[-1].name='Allow-WireGuard'
 uci set firewall.@rule[-1].src='wan'
@@ -418,6 +583,8 @@ When configuring external VPN clients (not on the local LAN), they need:
 - **Server Public Key**: From `/etc/wireguard/server_public.key`
 - **Allowed IPs**: `10.10.10.0/24, 192.168.250.20/32`
 
+**Note**: If using the client installation script (`client/scripts/install.sh`), this configuration is **generated automatically** - no need to create it manually. The example below is for reference or manual setup.
+
 Example client WireGuard config:
 ```ini
 [Interface]
@@ -437,7 +604,11 @@ PersistentKeepalive = 25
 
 ### Verify WireGuard is Running
 
+**Run on OpenWrt router (server):**
+
 ```bash
+# SSH to router: ssh root@192.168.2.90
+
 # Check WireGuard interface status
 wg show wg0
 
@@ -450,7 +621,11 @@ wg show wg0
 
 ### Verify Firewall Rules
 
+**Run on OpenWrt router (server):**
+
 ```bash
+# SSH to router: ssh root@192.168.2.90
+
 # List all firewall rules
 iptables -L -n -v
 
@@ -463,23 +638,22 @@ iptables -L -n -v
 
 ### Test from VPN Client
 
-**After client is configured with WireGuard:**
+**Run on client machine (after WireGuard is configured and connected):**
 
 ```bash
-# Connect to VPN
-# (varies by client OS)
+# First, connect to VPN (varies by client OS - use WireGuard app or wg-quick)
 
 # Test VPN connectivity
-ping 10.10.10.1  # Should succeed
+ping 10.10.10.1  # Should succeed (router VPN IP)
 
 # Test connectivity to AI server
 ping 192.168.250.20  # Should succeed
 
 # Test connectivity to inference port
-nc -zv 192.168.250.20 11434  # Should succeed (if server is running)
+nc -zv 192.168.250.20 11434  # Should succeed (if Ollama is running)
 
-# Test that LAN is isolated (should fail)
-ping 192.168.250.1  # Should timeout or fail
+# Test that LAN gateway is isolated (should fail - this is expected)
+ping 192.168.250.1  # Should timeout or fail (VPN clients blocked from LAN gateway)
 
 # Test internet access (should fail - VPN clients have no internet routing)
 ping 8.8.8.8  # Should timeout or fail
@@ -487,49 +661,21 @@ ping 8.8.8.8  # Should timeout or fail
 
 ### Test from AI Server
 
+**Run on AI server (macOS):**
+
 ```bash
-# On the AI server (192.168.250.20)
+# On the AI server at 192.168.250.20
 
 # Test outbound internet (should succeed)
 ping 8.8.8.8
 curl -I https://www.google.com
 
 # Test access to other LAN devices (should fail due to isolation)
-ping 192.168.250.100  # Should timeout or fail
+ping 192.168.250.100  # Should timeout or fail (firewall isolation working)
 
-# Test access to router (should succeed for DNS, etc)
+# Test access to router gateway (should succeed for DNS, etc.)
 ping 192.168.250.1  # Should succeed
 ```
-
----
-
-## Summary of My Configuration
-
-**Network Addressing:**
-- Upstream (ISP): 192.168.2.0/24
-  - ISP router: 192.168.2.1
-  - OpenWrt WAN: 192.168.2.90
-- LAN: 192.168.250.0/24
-  - OpenWrt router: 192.168.250.1
-  - AI server: 192.168.250.20 (firewall-isolated)
-- VPN: 10.10.10.0/24
-  - VPN server: 10.10.10.1
-  - VPN clients: 10.10.10.2+
-
-**Firewall Policy:**
-- VPN → AI server (192.168.250.20:11434): ALLOW
-- VPN → LAN (other): DENY
-- VPN → WAN: DENY
-- AI server → LAN (other): DENY
-- AI server → WAN: ALLOW
-- WAN → WireGuard UDP 51820: ALLOW
-- WAN → all else: DENY
-
-**Key Design Decisions:**
-1. **No separate DMZ subnet** - Used firewall rules for isolation instead of VLAN/physical separation
-2. **Double-NAT setup** - OpenWrt behind ISP router, requiring port forwarding at ISP level
-3. **Static IP for AI server** - Configured directly on macOS for stability
-4. **Firewall-based isolation** - AI server on LAN but isolated from other devices via firewall rules
 
 ---
 
@@ -598,37 +744,26 @@ uci show firewall | grep forwarding
 
 ---
 
-## Security Best Practices
-
-1. **Change default passwords** - Set strong root password on OpenWrt
-2. **Disable WAN SSH** - Only allow SSH from LAN
-3. **Keep OpenWrt updated** - Apply security patches regularly
-4. **Use strong WireGuard keys** - Never share private keys
-5. **Monitor logs** - Regularly check for unexpected activity
-6. **Rotate keys periodically** - Generate new WireGuard keys every 6-12 months
-7. **Document changes** - Keep a log of configuration modifications
-8. **Backup configuration** - Save UCI config regularly
-9. **Test after changes** - Always verify firewall rules after modifications
-
----
-
 ## Backup and Restore
 
 ### Backup Configuration
 
 ```bash
-# Create backup
+# Create backup (on OpenWrt router)
 sysupgrade -b /tmp/backup-$(date +%Y%m%d).tar.gz
 
 # Download backup (from admin machine)
-scp root@192.168.250.1:/tmp/backup-*.tar.gz ~/openwrt-backups/
+mkdir -p ~/openwrt-backups  # Create directory if it doesn't exist
+scp -O 'root@192.168.2.90:/tmp/backup-*.tar.gz' ~/openwrt-backups/
+# Note: -O flag uses legacy SCP (OpenWrt doesn't have SFTP server by default)
+# Note: Quotes prevent local shell from expanding the wildcard
 ```
 
 ### Restore Configuration
 
 ```bash
 # Upload backup
-scp backup.tar.gz root@192.168.250.1:/tmp/
+scp -O backup.tar.gz root@192.168.2.90:/tmp/
 
 # Restore (preserves installed packages)
 sysupgrade -r /tmp/backup.tar.gz
