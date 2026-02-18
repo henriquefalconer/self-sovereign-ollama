@@ -235,8 +235,9 @@ if [[ -z "$WG_SERVER_PUBKEY" ]]; then
 fi
 
 info "Enter your VPN client IP address (from the router's WireGuard peer config)"
-echo "  The router admin sets this when adding your public key as a peer (e.g. 10.10.10.2)"
-read -r -p "Client VPN IP: " WG_CLIENT_IP < /dev/tty
+echo "  The router admin sets this when adding your public key as a peer"
+read -r -p "Client VPN IP (default: 10.10.10.2): " WG_CLIENT_IP < /dev/tty
+WG_CLIENT_IP=${WG_CLIENT_IP:-10.10.10.2}
 
 if [[ -z "$WG_CLIENT_IP" ]]; then
     error "Client VPN IP is required"
@@ -283,7 +284,6 @@ echo ""
 warn "Next Steps for VPN Connection:"
 echo "  1. Wait for router admin confirmation (peer added)"
 echo "  2. Import configuration: sudo wg-quick up wg0"
-echo "     Or use WireGuard GUI app to import $WG_CONFIG"
 echo "  3. Verify: wg show"
 echo ""
 
@@ -478,21 +478,16 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "You can use Claude Code with your local Ollama server."
 echo ""
-echo "Benefits:"
 echo "  • Privacy: All inference stays on your network"
 echo "  • Cost: No API charges"
 echo "  • Speed: Low latency to local server"
 echo ""
-echo "Limitations:"
-echo "  • Model quality lower than real Claude"
-echo "  • No prompt caching (slower on repeated contexts)"
-echo "  • Best for: Simple tasks, file reads, quick edits"
-echo ""
 echo "Note: This only creates a 'claude-ollama' shell alias."
 echo "      Claude Code must already be installed separately."
 echo ""
-prompt "Create 'claude-ollama' shell alias? (y/N):"
+prompt "Create 'claude-ollama' shell alias? (Y/n):"
 read -r CLAUDE_CONSENT < /dev/tty
+CLAUDE_CONSENT=${CLAUDE_CONSENT:-Y}
 
 if [[ "$CLAUDE_CONSENT" =~ ^[Yy]$ ]]; then
     info "Adding claude-ollama alias to $SHELL_PROFILE..."
@@ -522,7 +517,7 @@ CLAUDE_PROFILE_EOF
         echo "  • Open a new terminal (or run: source $SHELL_PROFILE)"
         echo "  • Run: claude-ollama"
         echo ""
-        info "To use Claude Code with Anthropic cloud (recommended for quality):"
+        info "To use Claude Code with Anthropic cloud:"
         echo "  • Run: claude"
         echo ""
     fi
@@ -604,10 +599,11 @@ if [[ "$SERVER_REACHABLE" == "true" ]]; then
     echo ""
     echo -e "     ${BLUE}$RELOAD_CMD${NC}"
     echo ""
-    echo "  2. Start using Aider:"
+    echo "  2. Start using Aider / Claude Code with Ollama:"
     echo ""
-    echo -e "     ${BLUE}aider${NC}                          # Uses default model"
-    echo -e "     ${BLUE}aider --model ollama/model-name${NC}    # Select specific model"
+    echo -e "     ${BLUE}aider --model ollama/model-name${NC}    # Aider with specific model"
+    echo -e "     ${BLUE}claude-ollama${NC}                      # Claude Code via local Ollama"
+    echo -e "     ${BLUE}claude${NC}                             # Claude Code via Anthropic cloud"
     echo ""
     echo "  3. VPN Management:"
     echo ""
@@ -638,9 +634,11 @@ else
     echo ""
     echo -e "     ${BLUE}$RELOAD_CMD${NC}"
     echo ""
-    echo "  4. Start using Aider:"
+    echo "  4. Start using Aider / Claude Code with Ollama:"
     echo ""
-    echo -e "     ${BLUE}aider --model ollama/model-name${NC}"
+    echo -e "     ${BLUE}aider --model ollama/model-name${NC}    # Aider with specific model"
+    echo -e "     ${BLUE}claude-ollama${NC}                      # Claude Code via local Ollama"
+    echo -e "     ${BLUE}claude${NC}                             # Claude Code via Anthropic cloud"
     echo ""
     echo "  Troubleshooting:"
     echo "  • Ensure router admin has added your public key as a VPN peer"
