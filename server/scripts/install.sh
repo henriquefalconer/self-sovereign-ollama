@@ -246,6 +246,8 @@ info "✓ LaunchAgent plist created"
 
 # Step 10: Load the LaunchAgent
 info "Loading Ollama LaunchAgent..."
+warn "macOS may show a firewall dialog: 'Do you want the application ollama to accept incoming network connections?'"
+warn "→ Click 'Allow' to permit Ollama to bind to the network interface."
 launchctl bootstrap "$LAUNCHD_DOMAIN" "$PLIST_PATH" || fatal "Failed to load LaunchAgent"
 sleep 3
 info "✓ LaunchAgent loaded"
@@ -313,32 +315,14 @@ fi
 info "✓ Self-test passed: /v1/models returned valid response"
 
 
-# Step 15: Optional Model Pre-Pull
+# Step 15: Pull Models
 echo ""
-echo "=== Step 15: Optional Model Pre-Pull ==="
+echo "=== Step 15: Pull Models ==="
 echo ""
-info "Would you like to pre-pull models now?"
-echo "  This is optional but recommended for production deployments."
-echo "  Examples: qwen2.5-coder:32b, deepseek-r1:70b, llama3.2-vision:90b"
-echo ""
-read -r -p "Pre-pull models? (y/N): " REPLY
-
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    read -p "Enter model names (space-separated): " MODELS
-    if [[ -n "$MODELS" ]]; then
-        info "Pulling models..."
-        for MODEL in $MODELS; do
-            info "Pulling $MODEL..."
-            if ollama pull "$MODEL"; then
-                info "✓ Pulled: $MODEL"
-            else
-                warn "Failed to pull: $MODEL (continuing anyway)"
-            fi
-        done
-    fi
-else
-    info "Skipping model pre-pull (you can pull later)"
-fi
+info "Pull models on this server to make them available for inference:"
+echo "  ollama pull qwen2.5-coder:32b"
+echo "  ollama pull deepseek-r1:70b"
+echo "  ollama pull llama3.2-vision:90b"
 
 # Final summary
 echo ""
