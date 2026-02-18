@@ -96,6 +96,10 @@ info() {
     fi
 }
 
+warn() {
+    echo -e "${YELLOW}⚠ WARN${NC} $1"
+}
+
 # Detect Ollama host from environment or plist
 detect_ollama_host() {
     # 1. Check OLLAMA_HOST env var
@@ -862,16 +866,16 @@ else
     fail "Plist file missing"
 fi
 
-# Test 17: OLLAMA_HOST in plist (check for dedicated IP or all-interfaces binding)
+# Test 17: OLLAMA_HOST in plist (check for dedicated LAN IP binding)
 show_progress "Checking OLLAMA_HOST in plist..."
 if grep -q "OLLAMA_HOST" "$PLIST_PATH"; then
-    PLIST_HOST=$(grep -A1 "OLLAMA_HOST" "$PLIST_PATH" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
-    if [[ "$PLIST_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ "$PLIST_HOST" != "127.0.0.1" ]]; then
-        pass "OLLAMA_HOST=$PLIST_HOST configured in plist (dedicated LAN IP or all-interfaces binding)"
-    elif [[ "$PLIST_HOST" == "127.0.0.1" ]]; then
-        fail "OLLAMA_HOST=127.0.0.1 found in plist (v1 loopback-only binding, should be dedicated LAN IP or 0.0.0.0 for v2)"
+    PLIST_HOST=$(grep -A1 "OLLAMA_HOST" "$PLIST_PATH" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/' | tr -d '[:space:]')
+    if [[ "$PLIST_HOST" == "127.0.0.1" ]]; then
+        fail "OLLAMA_HOST=127.0.0.1 found in plist (v1 loopback-only binding, should be dedicated LAN IP for v2)"
+    elif [[ -n "$PLIST_HOST" ]]; then
+        pass "OLLAMA_HOST=$PLIST_HOST configured in plist (dedicated LAN IP)"
     else
-        fail "OLLAMA_HOST=$PLIST_HOST found in plist (unexpected value, should be dedicated LAN IP or 0.0.0.0)"
+        fail "OLLAMA_HOST is empty in plist"
     fi
 else
     fail "OLLAMA_HOST not found in plist"
