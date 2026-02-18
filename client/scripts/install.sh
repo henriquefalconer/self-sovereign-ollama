@@ -203,6 +203,7 @@ echo ""
 echo "=== Server Configuration ==="
 echo ""
 info "Enter the AI server IP address (default: 192.168.250.20)"
+echo "  This is the server's LAN IP inside the VPN-protected network — used the same whether local or remote"
 read -r -p "Server IP: " SERVER_IP < /dev/tty
 SERVER_IP=${SERVER_IP:-192.168.250.20}
 echo ""
@@ -215,8 +216,10 @@ fi
 
 # Prompt for VPN configuration
 info "Enter the router's WireGuard endpoint (format: IP:PORT)"
-echo "  Example: 1.2.3.4:51820"
-read -r -p "Endpoint: " WG_ENDPOINT < /dev/tty
+echo "  This is the VPN router's address — not the AI server ($SERVER_IP)"
+echo "  Example: 192.168.2.90:51820 (local) or 1.2.3.4:51820 (remote/public IP)"
+read -r -p "Endpoint (default: 192.168.2.90:51820): " WG_ENDPOINT < /dev/tty
+WG_ENDPOINT=${WG_ENDPOINT:-192.168.2.90:51820}
 
 if [[ -z "$WG_ENDPOINT" ]]; then
     error "Endpoint is required"
@@ -231,8 +234,8 @@ if [[ -z "$WG_SERVER_PUBKEY" ]]; then
     exit 1
 fi
 
-info "Enter your VPN client IP address (assigned by admin)"
-echo "  Example: 10.0.0.2"
+info "Enter your VPN client IP address (from the router's WireGuard peer config)"
+echo "  The router admin sets this when adding your public key as a peer (e.g. 10.10.10.2)"
 read -r -p "Client VPN IP: " WG_CLIENT_IP < /dev/tty
 
 if [[ -z "$WG_CLIENT_IP" ]]; then
@@ -240,12 +243,14 @@ if [[ -z "$WG_CLIENT_IP" ]]; then
     exit 1
 fi
 
-info "Enter allowed IPs (default: 192.168.250.0/24 for LAN access only)"
-read -r -p "Allowed IPs: " WG_ALLOWED_IPS < /dev/tty
-WG_ALLOWED_IPS=${WG_ALLOWED_IPS:-192.168.250.0/24}
+# AllowedIPs: VPN subnet + AI server IP only (no split tunneling beyond what's needed)
+WG_ALLOWED_IPS="10.10.10.0/24, $SERVER_IP/32"
 
 # Generate WireGuard configuration
-WG_CONFIG="$WG_DIR/wg0.conf"
+# wg-quick expects configs in $(brew --prefix)/etc/wireguard/
+WG_SYSTEM_DIR="$(brew --prefix)/etc/wireguard"
+mkdir -p "$WG_SYSTEM_DIR"
+WG_CONFIG="$WG_SYSTEM_DIR/wg0.conf"
 info "Generating WireGuard configuration..."
 
 cat > "$WG_CONFIG" <<EOF
@@ -262,6 +267,8 @@ EOF
 
 chmod 600 "$WG_CONFIG"
 info "✓ WireGuard configuration generated: $WG_CONFIG"
+echo "  AllowedIPs set to: $WG_ALLOWED_IPS"
+echo "  To change this (e.g. to route all traffic through VPN), edit: $WG_CONFIG"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
