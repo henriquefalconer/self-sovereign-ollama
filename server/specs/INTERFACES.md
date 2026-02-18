@@ -36,8 +36,7 @@ This provides **network perimeter security** - only VPN-authenticated clients ca
 ### Layer 3: Ollama Binding
 
 **Ollama listens on:**
-- dedicated LAN IP: `192.168.250.20:11434` (recommended)
-- Or all interfaces: `0.0.0.0:11434` (simpler configuration)
+- dedicated LAN IP: `192.168.250.20:11434`
 
 ---
 
@@ -160,7 +159,7 @@ ping -c 3 8.8.8.8
 
 ### Environment Variables
 
-- **OLLAMA_HOST**: Set to AI server IP (`192.168.250.20`) or all interfaces (`0.0.0.0`)
+- **OLLAMA_HOST**: Set to AI server IP (`192.168.250.20`)
 - **OLLAMA_ORIGINS**: Optional CORS configuration (if browser clients needed)
 
 ### LaunchAgent Configuration
@@ -180,8 +179,7 @@ ping -c 3 8.8.8.8
 lsof -i :11434
 
 # Should show:
-# - 192.168.250.20:11434 (dedicated LAN IP), or
-# - *:11434 (all interfaces if 0.0.0.0)
+# - 192.168.250.20:11434 (dedicated LAN IP)
 ```
 
 ---

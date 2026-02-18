@@ -32,7 +32,7 @@ server/
 - Location: `~/Library/LaunchAgents/com.ollama.plist`
 - Purpose: Configure Ollama as user-level service
 - Key settings:
-  - `OLLAMA_HOST=192.168.250.20` (dedicated LAN IP) or `0.0.0.0` (all interfaces)
+  - `OLLAMA_HOST=192.168.250.20` (dedicated LAN IP)
   - `RunAtLoad=true` (auto-start on login)
   - `KeepAlive=true` (auto-restart on crash)
   - Logs: `/tmp/ollama.stdout.log`, `/tmp/ollama.stderr.log`

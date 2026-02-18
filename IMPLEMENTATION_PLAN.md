@@ -87,7 +87,7 @@ P1 and P2 share no code and communicate only via `client/specs/API_CONTRACT.md`
 #### Server Installation
 - [ ] `server/scripts/install.sh` completes without errors on target hardware
 - [ ] Dedicated LAN configuration (static IP 192.168.250.20, gateway 192.168.250.1)
-- [ ] Ollama service starts successfully and binds to dedicated IP or 0.0.0.0
+- [ ] Ollama service starts successfully and binds to dedicated IP
 - [ ] `server/scripts/test.sh --verbose` — all 29 automated tests pass
 - [ ] `server/scripts/uninstall.sh` cleanly removes configuration
 

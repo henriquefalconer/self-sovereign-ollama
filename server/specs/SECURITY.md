@@ -140,8 +140,8 @@ This is **enforced by router hardware** and kernel packet filtering, not by appl
 
 ### Implementation
 
-- Ollama binds to dedicated LAN IP (`192.168.250.20:11434`) or all interfaces (`0.0.0.0:11434`)
-- LaunchAgent plist sets `OLLAMA_HOST=192.168.250.20` (or `0.0.0.0`)
+- Ollama binds to dedicated LAN IP (`192.168.250.20:11434`)
+- LaunchAgent plist sets `OLLAMA_HOST=192.168.250.20`
 - No built-in authentication (relies on network perimeter)
 - Logs stored locally (`/tmp/ollama.*.log`)
 - No outbound telemetry

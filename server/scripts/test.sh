@@ -917,9 +917,7 @@ show_progress "Checking Ollama service binding..."
 if command -v lsof &> /dev/null; then
     OLLAMA_BINDING=$(lsof -i :11434 -sTCP:LISTEN 2>/dev/null | grep ollama || echo "")
     if echo "$OLLAMA_BINDING" | grep -q "127.0.0.1:11434"; then
-        fail "Ollama binds to loopback only (127.0.0.1:11434) - v1 configuration, should be dedicated LAN IP or 0.0.0.0 for v2"
-    elif echo "$OLLAMA_BINDING" | grep -qE "\*:11434|0\.0\.0\.0:11434"; then
-        pass "Ollama binds to all interfaces (0.0.0.0:11434) - accessible"
+        fail "Ollama binds to loopback only (127.0.0.1:11434) - v1 configuration, should be dedicated LAN IP"
     elif echo "$OLLAMA_BINDING" | grep -qE "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:11434"; then
         pass "Ollama binds to dedicated LAN IP - secure"
     else

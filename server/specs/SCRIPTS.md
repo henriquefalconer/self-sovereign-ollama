@@ -55,7 +55,6 @@
 - Stops any existing Ollama service (brew services or launchd) to avoid conflicts
 - Creates `~/Library/LaunchAgents/com.ollama.plist` to run Ollama as user-level service
   - Sets `OLLAMA_HOST=192.168.250.20` to bind dedicated LAN IP only (configurable)
-    - Alternative: `OLLAMA_HOST=0.0.0.0` if user prefers to bind all interfaces
   - Configures `KeepAlive=true` and `RunAtLoad=true` for automatic startup
   - Logs to `/tmp/ollama.stdout.log` and `/tmp/ollama.stderr.log`
 - Loads the plist via `launchctl bootstrap` (modern API)
@@ -190,7 +189,7 @@ Comprehensive test script that validates all server functionality. Designed to r
 - Verify LaunchAgent is loaded (`launchctl list | grep com.ollama`)
 - Verify Ollama process is running as user (not root)
 - Verify Ollama is listening on port 11434
-- Verify binding to correct interface: `lsof -i :11434` (should show dedicated LAN IP or 0.0.0.0)
+- Verify binding to correct interface: `lsof -i :11434` (should show dedicated LAN IP)
 - Verify service responds to basic HTTP requests
 
 ### API Endpoint Tests (OpenAI-Compatible)
@@ -243,13 +242,13 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
 - Verify Ollama process owner is current user (not root)
 - Verify log files exist and are readable (`/tmp/ollama.stdout.log`, `/tmp/ollama.stderr.log`)
 - Verify plist file exists at `~/Library/LaunchAgents/com.ollama.plist`
-- Verify `OLLAMA_HOST` is set correctly in plist (dedicated LAN IP or 0.0.0.0)
+- Verify `OLLAMA_HOST` is set correctly in plist (dedicated LAN IP)
 - Verify no unexpected network services running: `lsof -i` (should only show Ollama on 11434)
 
 ### Network Isolation Tests
 - Verify Ollama service binds to correct interface
   - Use `lsof -i :11434` to check binding
-  - Should show dedicated LAN IP (192.168.250.20) or 0.0.0.0
+  - Should show dedicated LAN IP (192.168.250.20)
 - Test local access via dedicated LAN IP (should succeed)
 - Test router connectivity (should succeed)
 - Test LAN isolation: attempt to reach LAN device (should fail)
@@ -323,7 +322,7 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
 ## Configuration files
 
 Server configuration is minimal and managed via:
-- Environment variables in the Ollama launchd plist (`OLLAMA_HOST=192.168.250.20` or `0.0.0.0`)
+- Environment variables in the Ollama launchd plist (`OLLAMA_HOST=192.168.250.20`)
 - macOS network settings (static IP for dedicated LAN IP)
 - Ollama's built-in configuration system
 - Router configuration (managed separately, see NETWORK_DOCUMENTATION.md)

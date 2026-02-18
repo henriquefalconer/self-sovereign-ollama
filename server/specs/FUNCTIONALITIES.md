@@ -71,7 +71,7 @@ LAYER 2 — AI SERVER CAPABILITIES
 **Purpose**: Model loading, inference, and API serving
 
 **Functionality**:
-- Bind to AI server interface (`192.168.250.20:11434`) or all interfaces (`0.0.0.0:11434`)
+- Bind to AI server interface (`192.168.250.20:11434`)
 - Serve OpenAI-compatible API at `/v1/*`
 - Serve Anthropic-compatible API at `/v1/messages` (Ollama 0.5.0+)
 - Serve Ollama native API at `/api/*`
@@ -172,7 +172,7 @@ See `ANTHROPIC_COMPATIBILITY.md` for complete specification.
 **Key settings**:
 - `ProgramArguments`: Path to Ollama binary
 - `EnvironmentVariables`:
-  - `OLLAMA_HOST`: dedicated LAN IP IP or 0.0.0.0
+  - `OLLAMA_HOST`: dedicated LAN IP
   - `OLLAMA_ORIGINS`: CORS configuration (optional)
 - `RunAtLoad`: true (start on login)
 - `KeepAlive`: true (auto-restart on crash)

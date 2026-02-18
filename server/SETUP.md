@@ -89,8 +89,6 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ollama.plist
 
 **Important:** `OLLAMA_HOST=192.168.250.20` binds Ollama to the dedicated LAN IP. Router firewall controls access (VPN clients → port 11434 only).
 
-**Alternative binding:** Use `OLLAMA_HOST=0.0.0.0` to listen on all interfaces. Router firewall still controls external access.
-
 ### 5. Start Ollama Service
 
 ```bash
@@ -140,7 +138,7 @@ echo "✓ Ollama accessible on isolated LAN interface"
 
 # Verify Ollama is bound to dedicated LAN IP or all interfaces
 lsof -i :11434 | grep LISTEN
-# Expected output: ollama should show 192.168.250.20:11434 (or 0.0.0.0:11434)
+# Expected output: ollama should show 192.168.250.20:11434
 ```
 
 #### Test 2: OpenAI-Compatible API (for Aider)
@@ -337,8 +335,8 @@ This step is optional but recommended if you want immediate response times after
 - Check if Ollama process is actually running:
   - `ps aux | grep "[o]llama serve"`
 - Verify port binding:
-  - `lsof -i :11434` should show Ollama bound to 192.168.250.20 (or 0.0.0.0)
-- Check environment variable in Ollama plist: `plutil -p ~/Library/LaunchAgents/com.ollama.plist | grep OLLAMA_HOST` (should be `192.168.250.20` or `0.0.0.0`)
+  - `lsof -i :11434` should show Ollama bound to 192.168.250.20
+- Check environment variable in Ollama plist: `plutil -p ~/Library/LaunchAgents/com.ollama.plist | grep OLLAMA_HOST` (should be `192.168.250.20`)
 - Review logs:
   - `tail -50 /tmp/ollama.stdout.log`
   - `tail -50 /tmp/ollama.stderr.log`
@@ -363,10 +361,10 @@ This step is optional but recommended if you want immediate response times after
   - Check client can ping server: `ping 192.168.250.20`
 - Verify Ollama is running and listening on isolated LAN interface:
   - `launchctl list | grep com.ollama`
-  - `lsof -i :11434` should show Ollama bound to 192.168.250.20 (or 0.0.0.0)
+  - `lsof -i :11434` should show Ollama bound to 192.168.250.20
 - Verify Ollama dedicated IP binding:
   - `lsof -i :11434 | grep ollama` should show `192.168.250.20:11434` (or `*:11434`)
-  - Check plist: `plutil -p ~/Library/LaunchAgents/com.ollama.plist | grep OLLAMA_HOST` (should be `192.168.250.20` or `0.0.0.0`)
+  - Check plist: `plutil -p ~/Library/LaunchAgents/com.ollama.plist | grep OLLAMA_HOST` (should be `192.168.250.20`)
 - Test from server itself:
   - dedicated LAN IP: `curl http://192.168.250.20:11434/v1/models`
 - If server test works but client test doesn't:

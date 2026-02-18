@@ -261,8 +261,6 @@ if lsof -i :11434 -sTCP:LISTEN &> /dev/null; then
     BINDING=$(lsof -i :11434 -sTCP:LISTEN 2>/dev/null | grep ollama | awk '{print $9}')
     if echo "$BINDING" | grep -q "$SERVER_IP"; then
         info "✓ Ollama bound to dedicated LAN IP ($SERVER_IP:11434)"
-    elif echo "$BINDING" | grep -q "0.0.0.0"; then
-        info "✓ Ollama bound to all interfaces (0.0.0.0:11434)"
     else
         warn "Ollama binding: $BINDING (unexpected)"
     fi

@@ -169,7 +169,6 @@ See `SECURITY.md` for complete security model documentation.
 ### Ollama Configuration
 
 - Bind Ollama to **dedicated LAN IP** (`192.168.250.20:11434`) - recommended
-  - Alternative: Bind to all interfaces (`0.0.0.0:11434`) - simpler but less explicit
 - Configured via `OLLAMA_HOST` environment variable in LaunchAgent plist
 - Let Ollama handle model loading, inference, and unloading automatically
 - Leverage Ollama's native support for streaming responses, JSON mode, tool calling
@@ -206,8 +205,8 @@ Ollama exposes both OpenAI-compatible and Anthropic-compatible APIs **directly**
 Ollama runs as user-level LaunchAgent (not root):
 
 **Ollama LaunchAgent** (`~/Library/LaunchAgents/com.ollama.plist`)
-- Binds `192.168.250.20:11434` (dedicated LAN IP) or `0.0.0.0:11434` (all interfaces)
-- Sets `OLLAMA_HOST=192.168.250.20` (or `0.0.0.0`)
+- Binds `192.168.250.20:11434` (dedicated LAN IP)
+- Sets `OLLAMA_HOST=192.168.250.20`
 - Auto-start on login (`RunAtLoad=true`)
 - Auto-restart on crash (`KeepAlive=true`)
 - Logs to `/tmp/ollama.stdout.log`, `/tmp/ollama.stderr.log`
@@ -253,7 +252,6 @@ tail -f /tmp/ollama.stderr.log
 ### Network Binding
 
 - Ollama bound to dedicated LAN IP (`192.168.250.20`) - recommended for explicit control
-- Alternative: Bind to all interfaces (`0.0.0.0`) - simpler but less explicit
 - Firewall enforces access control (only VPN clients can reach port 11434)
 - No application-layer authentication (security via network perimeter)
 
