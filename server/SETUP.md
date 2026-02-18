@@ -71,6 +71,14 @@ cat > ~/Library/LaunchAgents/com.ollama.plist <<'EOF'
     <dict>
         <key>OLLAMA_HOST</key>
         <string>192.168.250.20</string>
+        <key>OLLAMA_DEBUG</key>
+        <string>1</string>
+        <key>OLLAMA_CONTEXT_LENGTH</key>
+        <string>32000</string>
+        <key>OLLAMA_FLASH_ATTENTION</key>
+        <string>1</string>
+        <key>OLLAMA_KEEP_ALIVE</key>
+        <string>24h</string>
     </dict>
     <key>KeepAlive</key>
     <true/>

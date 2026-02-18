@@ -160,6 +160,10 @@ ping -c 3 8.8.8.8
 ### Environment Variables
 
 - **OLLAMA_HOST**: Set to AI server IP (`192.168.250.20`)
+- **OLLAMA_DEBUG**: 1
+- **OLLAMA_CONTEXT_LENGTH**: 32000
+- **OLLAMA_FLASH_ATTENTION**: 1
+- **OLLAMA_KEEP_ALIVE**: 24h
 - **OLLAMA_ORIGINS**: Optional CORS configuration (if browser clients needed)
 
 ### LaunchAgent Configuration

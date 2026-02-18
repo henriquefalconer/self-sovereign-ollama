@@ -225,6 +225,14 @@ cat > "$PLIST_PATH" <<EOF
     <dict>
         <key>OLLAMA_HOST</key>
         <string>$OLLAMA_HOST</string>
+        <key>OLLAMA_DEBUG</key>
+        <string>1</string>
+        <key>OLLAMA_CONTEXT_LENGTH</key>
+        <string>32000</string>
+        <key>OLLAMA_FLASH_ATTENTION</key>
+        <string>1</string>
+        <key>OLLAMA_KEEP_ALIVE</key>
+        <string>24h</string>
         <!-- Optional CORS configuration (uncomment if needed):
         <key>OLLAMA_ORIGINS</key>
         <string>*</string>

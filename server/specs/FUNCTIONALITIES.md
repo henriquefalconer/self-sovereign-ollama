@@ -173,6 +173,10 @@ See `ANTHROPIC_COMPATIBILITY.md` for complete specification.
 - `ProgramArguments`: Path to Ollama binary
 - `EnvironmentVariables`:
   - `OLLAMA_HOST`: dedicated LAN IP
+  - `OLLAMA_DEBUG`: 1
+  - `OLLAMA_CONTEXT_LENGTH`: 32000
+  - `OLLAMA_FLASH_ATTENTION`: 1
+  - `OLLAMA_KEEP_ALIVE`: 24h
   - `OLLAMA_ORIGINS`: CORS configuration (optional)
 - `RunAtLoad`: true (start on login)
 - `KeepAlive`: true (auto-restart on crash)
