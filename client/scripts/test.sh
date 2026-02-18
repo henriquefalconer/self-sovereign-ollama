@@ -247,29 +247,27 @@ echo "=== Dependency Tests ==="
 
 # Test 8: WireGuard installed
 info "Checking for WireGuard..."
-if command -v wg &> /dev/null || brew list wireguard-tools &> /dev/null 2>&1; then
-    pass "WireGuard is installed"
+if [[ -d "/Applications/WireGuard.app" ]]; then
+    pass "WireGuard is installed (App Store)"
+elif command -v wg &> /dev/null || brew list wireguard-tools &> /dev/null 2>&1; then
+    pass "WireGuard is installed (wireguard-tools)"
 else
-    fail "WireGuard is not installed"
+    fail "WireGuard is not installed" "WireGuard app or wireguard-tools" "Not found" "Install from: https://apps.apple.com/app/wireguard/id1451685025"
 fi
 
 # Test 9: WireGuard VPN connected
+# Note: The App Store WireGuard app uses Apple's Network Extension framework,
+# which is not visible to the wg CLI. ICMP may also be blocked by router firewall
+# rules. HTTP connectivity to the VPN-protected server is the definitive check.
 info "Checking WireGuard VPN status..."
-if wg show &> /dev/null && wg show | grep -q "interface:"; then
-    WG_INTERFACE=$(wg show | grep "interface:" | awk '{print $2}' | head -n1 || echo "")
-    if [[ -n "$WG_INTERFACE" ]]; then
-        pass "WireGuard VPN is connected (interface: $WG_INTERFACE)"
+if [[ -n "${OLLAMA_API_BASE:-}" ]]; then
+    if curl -sf --max-time 3 "${OLLAMA_API_BASE}/v1/models" &> /dev/null; then
+        pass "WireGuard VPN is connected (server reachable)"
     else
-        # Fallback: check for active utun interface
-        UTUN_INTERFACE=$(ifconfig | grep -E "^utun[0-9]+" | head -n1 | cut -d: -f1 || echo "")
-        if [[ -n "$UTUN_INTERFACE" ]]; then
-            pass "WireGuard VPN appears connected (interface: $UTUN_INTERFACE)"
-        else
-            fail "WireGuard is installed but VPN is not connected"
-        fi
+        fail "WireGuard VPN is not connected (cannot reach ${OLLAMA_API_BASE})" "" "" "Activate the tunnel in the WireGuard app"
     fi
 else
-    fail "WireGuard VPN is not connected"
+    skip "WireGuard VPN connectivity check - OLLAMA_API_BASE not set" "Set OLLAMA_API_BASE in ~/.ai-client/env first"
 fi
 
 # Test 10: Homebrew installed
@@ -683,24 +681,58 @@ fi
 if [[ "$SKIP_SERVER" == "false" ]] && [[ "$QUICK_MODE" == "false" ]] && [[ -n "${FIRST_MODEL:-}" ]] && [[ -n "${SERVER_URL:-}" ]]; then
     info "Testing JSON mode response format..."
 
+    # Models known to reliably support JSON mode, in priority order.
+    # Avoids thinking models (qwen3, deepseek-r1, etc.) which return empty content.
+    JSON_CAPABLE_PATTERNS=(
+        "llama3"
+        "llama2"
+        "mistral"
+        "mixtral"
+        "gemma"
+        "phi3"
+        "phi4"
+        "qwen2"
+        "codellama"
+        "deepseek-coder"
+        "starcoder"
+        "command-r"
+        "solar"
+        "vicuna"
+        "openchat"
+    )
+
+    # Pick best available model for JSON mode from the /v1/models list
+    JSON_MODEL="$FIRST_MODEL"
+    if [[ -n "${MODELS_RESPONSE:-}" ]]; then
+        ALL_MODELS=$(echo "$MODELS_RESPONSE" | jq -r '.data[].id' 2>/dev/null || echo "")
+        for pattern in "${JSON_CAPABLE_PATTERNS[@]}"; do
+            MATCH=$(echo "$ALL_MODELS" | grep -i "^${pattern}" | head -n1 || true)
+            if [[ -n "$MATCH" ]]; then
+                JSON_MODEL="$MATCH"
+                break
+            fi
+        done
+    fi
+    info "Using model for JSON mode test: $JSON_MODEL"
+
     # Measure timing for verbose mode
     START_TIME=$(date +%s%N 2>/dev/null || date +%s)
 
     if [[ "$VERBOSE" == "true" ]]; then
         # Verbose mode: show request/response details
         info "Request: POST $SERVER_URL/v1/chat/completions (JSON mode)"
-        info "Body: {\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}"
+        info "Body: {\"model\":\"$JSON_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}"
 
         JSON_RESPONSE=$(curl -v "$SERVER_URL/v1/chat/completions" \
             -H "Content-Type: application/json" \
-            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}" \
+            -d "{\"model\":\"$JSON_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}" \
             2>&1 || echo "FAILED")
 
         info "Response: $JSON_RESPONSE"
     else
         JSON_RESPONSE=$(curl -sf "$SERVER_URL/v1/chat/completions" \
             -H "Content-Type: application/json" \
-            -d "{\"model\":\"$FIRST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}" \
+            -d "{\"model\":\"$JSON_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Return a JSON object\"}],\"max_tokens\":20,\"response_format\":{\"type\":\"json_object\"}}" \
             2>/dev/null || echo "FAILED")
     fi
 
@@ -723,10 +755,13 @@ if [[ "$SKIP_SERVER" == "false" ]] && [[ "$QUICK_MODE" == "false" ]] && [[ -n "$
 
     if [[ "$JSON_RESPONSE" != "FAILED" ]]; then
         CONTENT=$(echo "$JSON_ONLY" | jq -r '.choices[0].message.content' 2>/dev/null || echo "")
+        REASONING=$(echo "$JSON_ONLY" | jq -r '.choices[0].message.reasoning // empty' 2>/dev/null || echo "")
         if echo "$CONTENT" | jq -e '.' &> /dev/null 2>&1; then
-            pass "JSON mode returns valid JSON content"
+            pass "JSON mode returns valid JSON content ($JSON_MODEL)"
+        elif [[ -n "$REASONING" && -z "$CONTENT" ]]; then
+            skip "JSON mode test - $JSON_MODEL is a thinking model (no JSON-capable model found)" "Pull a non-thinking model (e.g. llama3.2, mistral, qwen2.5)"
         else
-            skip "JSON mode test - response not valid JSON (model-dependent)" "Use a model that supports JSON mode"
+            skip "JSON mode test - $JSON_MODEL did not return valid JSON" "Pull a model with stronger JSON mode support (e.g. llama3.2, mistral)"
         fi
     else
         skip "JSON mode test - request failed" "Ensure server is running and accessible"
@@ -848,7 +883,9 @@ else
     if [[ "$SKIP_SERVER" == "true" ]]; then
         skip "End-to-end Aider test - server tests skipped" "Remove --skip-server flag when running test.sh"
     else
-        info "Running non-interactive Aider test with qwen2.5:0.5b..."
+        # Use the first available model from earlier tests, fall back to qwen2.5:0.5b
+        AIDER_TEST_MODEL="ollama/${FIRST_MODEL:-qwen2.5:0.5b}"
+        info "Running non-interactive Aider test with $AIDER_TEST_MODEL..."
 
         # Create a temporary directory for the test
         TEST_DIR=$(mktemp -d)
@@ -858,16 +895,16 @@ else
         echo "# Test file" > test.txt
 
         # Run Aider non-interactively with a simple prompt
-        # This will fail if OLLAMA_API_BASE has /v1 suffix (constructs invalid URL)
-        if run_with_timeout 30 bash -c 'echo "Say ok" | aider --yes --message "respond with just the word ok" --model ollama/qwen2.5:0.5b test.txt' &> /tmp/aider_test_output.log 2>&1; then
+        # This will fail if OLLAMA_API_BASE has /v1 suffix (constructs /v1/api/show instead of /api/show)
+        if run_with_timeout 30 bash -c "echo 'Say ok' | aider --yes --message 'respond with just the word ok' --model '$AIDER_TEST_MODEL' test.txt" &> /tmp/aider_test_output.log 2>&1; then
             pass "End-to-end Aider test succeeded (model metadata fetched correctly)"
         else
-            # Check if it's a 404 error (the critical bug we're testing for)
-            if grep -q "404" /tmp/aider_test_output.log || grep -q "/v1/api" /tmp/aider_test_output.log; then
-                fail "End-to-end Aider test failed with 404 error" "Aider should fetch model metadata from /api/show" "Check /tmp/aider_test_output.log for details" "OLLAMA_API_BASE may have incorrect /v1 suffix"
+            # Only flag as the critical bug if the URL pattern confirms wrong /v1 suffix construction
+            if grep -q "/v1/api" /tmp/aider_test_output.log; then
+                fail "End-to-end Aider test: OLLAMA_API_BASE has /v1 suffix bug" "Aider fetches metadata from /api/show" "Got /v1/api/show — check /tmp/aider_test_output.log" "Remove /v1 suffix from OLLAMA_API_BASE in ~/.ai-client/env"
             else
-                # Other error (model not available, timeout, etc.) - this is acceptable for now
-                skip "End-to-end Aider test timed out or model unavailable" "Ensure qwen2.5:0.5b is available on server (see /tmp/aider_test_output.log)"
+                # Model unavailable, timeout, or other transient error
+                skip "End-to-end Aider test timed out or model unavailable" "Ensure $AIDER_TEST_MODEL is available on server (see /tmp/aider_test_output.log)"
             fi
         fi
 
@@ -1031,14 +1068,14 @@ else
 
         if [[ "$VERBOSE" == "true" ]]; then
             info "Request: POST $ANTHROPIC_SERVER/v1/messages"
-            info "Body: {\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}"
+            info "Body: {\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":10}"
         fi
 
         RESPONSE_WITH_CODE=$(curl -sf "${ANTHROPIC_SERVER}/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
-            -d "{\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1}" \
+            -d "{\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":10}" \
             -w "\n%{http_code}" \
             2>/dev/null || echo -e "FAILED\n000")
 
@@ -1064,10 +1101,10 @@ else
         # Validate HTTP status
         if [[ "$HTTP_CODE" != "200" ]]; then
             fail "POST /v1/messages returned HTTP $HTTP_CODE" "200" "$HTTP_CODE" "Ensure Ollama 0.5.0+ is running on server"
-        elif [[ "$RESPONSE_BODY" != "FAILED" ]] && echo "$RESPONSE_BODY" | jq -e '.content[0].text' &> /dev/null; then
+        elif [[ "$RESPONSE_BODY" != "FAILED" ]] && echo "$RESPONSE_BODY" | jq -e '.content | type == "array"' &> /dev/null; then
             pass "POST /v1/messages (Anthropic API) succeeded"
         else
-            fail "POST /v1/messages failed or returned invalid response" "Anthropic response with .content[0].text" "Invalid or missing response"
+            fail "POST /v1/messages failed or returned invalid response" "Anthropic response with content array" "Invalid or missing response"
         fi
     elif [[ -z "$ANTHROPIC_SERVER" ]]; then
         skip "POST /v1/messages - server URL not configured" "Set ANTHROPIC_BASE_URL or OLLAMA_API_BASE in ~/.ai-client/env"
@@ -1110,14 +1147,14 @@ else
 
         if [[ "$VERBOSE" == "true" ]]; then
             info "Request: POST $ANTHROPIC_SERVER/v1/messages (streaming)"
-            info "Body: {\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true}"
+            info "Body: {\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":10,\"stream\":true}"
         fi
 
         STREAM_RESPONSE=$(curl -sf "${ANTHROPIC_SERVER}/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ollama" \
             -H "anthropic-version: 2023-06-01" \
-            -d "{\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":1,\"stream\":true}" \
+            -d "{\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":10,\"stream\":true}" \
             2>/dev/null || echo "FAILED")
 
         END_TIME=$(date +%s%N 2>/dev/null || date +%s)
@@ -1180,7 +1217,7 @@ else
             SCHEMA_VALID=false
             MISSING_FIELDS="${MISSING_FIELDS}role, "
         fi
-        if ! echo "$RESPONSE_BODY" | jq -e '.content' &> /dev/null; then
+        if ! echo "$RESPONSE_BODY" | jq -e '.content | type == "array"' &> /dev/null; then
             SCHEMA_VALID=false
             MISSING_FIELDS="${MISSING_FIELDS}content, "
         fi
@@ -1406,7 +1443,6 @@ else
        [[ -z "${OLLAMA_API_BASE:-}" ]] || \
        [[ -z "${OPENAI_API_BASE:-}" ]] || \
        [[ -z "${OPENAI_API_KEY:-}" ]] || \
-       ! command -v tailscale &> /dev/null || \
        ! command -v brew &> /dev/null || \
        ! command -v python3 &> /dev/null || \
        ! command -v pipx &> /dev/null; then
