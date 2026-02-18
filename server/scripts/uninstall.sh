@@ -93,39 +93,20 @@ fi
 echo ""
 info "Network configuration cleanup..."
 echo ""
-warn "Note: This script does NOT automatically revert network settings."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Revert Static IP in macOS System Settings"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "If you configured a static IP for the isolated LAN during installation,"
-echo "you may want to revert it back to DHCP:"
+echo "  1. Open System Settings → Network"
+echo "  2. Select your Ethernet interface → click Details..."
+echo "  3. Go to the TCP/IP tab"
+echo "  4. Set 'Configure IPv4' to Using DHCP"
+echo "  5. Go to the DNS tab, remove any manually added entries"
+echo "  6. Click OK → Apply"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  sudo networksetup -listallhardwareports"
-echo "  sudo networksetup -setdhcp \"<interface-name>\""
-echo ""
-echo "Example:"
-echo "  sudo networksetup -setdhcp \"Ethernet\""
-echo ""
-read -p "Would you like to revert the static IP to DHCP now? (y/N): " -n 1 -r
-echo ""
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Available network interfaces:"
-    networksetup -listallhardwareports | grep -A 1 "Hardware Port" | grep -v "^--$"
-    echo ""
-    read -p "Enter the interface name (e.g., Ethernet): " INTERFACE_NAME
-    if [[ -n "$INTERFACE_NAME" ]]; then
-        info "Reverting $INTERFACE_NAME to DHCP..."
-        if sudo networksetup -setdhcp "$INTERFACE_NAME"; then
-            info "✓ Successfully reverted $INTERFACE_NAME to DHCP"
-            REMOVED_ITEMS+=("Static IP configuration (reverted to DHCP)")
-        else
-            error "Failed to revert to DHCP"
-            warn "You may need to manually configure this in System Settings"
-        fi
-    else
-        warn "No interface name provided, skipping..."
-    fi
-else
-    info "Skipping static IP reversion (keeping current configuration)"
-fi
+
+read -r -p "Press Enter when done..." < /dev/tty
 echo ""
 
 # Step 5: Router configuration reminder (v2)
