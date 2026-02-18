@@ -115,19 +115,10 @@ echo ""
 echo "=== Step 4: LAN Network Configuration ==="
 echo ""
 
-# Prompt for LAN subnet
-info "Enter LAN subnet (default: 192.168.250.0/24)"
-read -p "Subnet: " LAN_SUBNET
-LAN_SUBNET=${LAN_SUBNET:-192.168.250.0/24}
-
-# Extract subnet base and mask
-LAN_BASE=$(echo "$LAN_SUBNET" | cut -d/ -f1 | cut -d. -f1-3)
-LAN_MASK=$(echo "$LAN_SUBNET" | cut -d/ -f2)
-
 # Prompt for server static IP
-info "Enter server IP on LAN network (default: ${LAN_BASE}.20)"
+info "Enter the static IP you will assign to this server (default: 192.168.250.20)"
 read -p "Server IP: " SERVER_IP
-SERVER_IP=${SERVER_IP:-${LAN_BASE}.20}
+SERVER_IP=${SERVER_IP:-192.168.250.20}
 
 # Validate IP format
 if ! echo "$SERVER_IP" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
@@ -135,67 +126,35 @@ if ! echo "$SERVER_IP" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
     exit 1
 fi
 
-# Validate subnet membership
-if ! echo "$SERVER_IP" | grep -q "^${LAN_BASE}\."; then
-    error "Server IP $SERVER_IP is not in subnet $LAN_SUBNET"
-    exit 1
-fi
+GATEWAY="$(echo "$SERVER_IP" | cut -d. -f1-3).1"
 
-info "✓ Server IP: $SERVER_IP"
+# Instructions for manual static IP configuration
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Configure Static IP in macOS System Settings"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  1. Open System Settings → Network"
+echo "  2. Select your Ethernet interface → click Details..."
+echo "  3. Go to the TCP/IP tab"
+echo "  4. Set 'Configure IPv4' to Manually"
+echo "  5. Enter:"
+echo ""
+echo "       IP Address:  $SERVER_IP"
+echo "       Subnet Mask: 255.255.255.0"
+echo "       Router:      $GATEWAY"
+echo ""
+echo "  6. Go to the DNS tab, add:"
+echo ""
+echo "       $GATEWAY"
+echo "       8.8.8.8"
+echo ""
+echo "  7. Click OK → Apply"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 
-# Detect ethernet interface
-info "Detecting ethernet interface..."
-INTERFACES=$(networksetup -listallhardwareports | grep -A 1 "Ethernet" | grep "Device:" | awk '{print $2}')
-
-if [[ -z "$INTERFACES" ]]; then
-    error "No ethernet interface found"
-    exit 1
-fi
-
-# If multiple interfaces, let user choose
-INTERFACE=""
-INTERFACE_COUNT=$(echo "$INTERFACES" | wc -l | tr -d ' ')
-if [[ "$INTERFACE_COUNT" -gt 1 ]]; then
-    echo "Multiple ethernet interfaces found:"
-    echo "$INTERFACES" | nl
-    while true; do
-        read -p "Select interface number (1-${INTERFACE_COUNT}): " INTERFACE_NUM
-        if [[ "$INTERFACE_NUM" =~ ^[0-9]+$ ]] && [[ "$INTERFACE_NUM" -ge 1 ]] && [[ "$INTERFACE_NUM" -le "$INTERFACE_COUNT" ]]; then
-            INTERFACE=$(echo "$INTERFACES" | sed -n "${INTERFACE_NUM}p")
-            break
-        fi
-        error "Invalid selection — enter a number between 1 and ${INTERFACE_COUNT}"
-    done
-else
-    INTERFACE="$INTERFACES"
-fi
-
-if [[ -z "$INTERFACE" ]]; then
-    error "No interface selected"
-    exit 1
-fi
-
-info "✓ Using interface: $INTERFACE"
-
-# Configure static IP
-info "Configuring static IP..."
-GATEWAY="${LAN_BASE}.1"
-NETMASK="255.255.255.0"
-
-if sudo networksetup -setmanual "$INTERFACE" "$SERVER_IP" "$NETMASK" "$GATEWAY"; then
-    info "✓ Static IP configured: $SERVER_IP"
-else
-    error "Failed to configure static IP"
-    exit 1
-fi
-
-# Configure DNS (router primary, public backup)
-info "Configuring DNS..."
-if sudo networksetup -setdnsservers "$INTERFACE" "$GATEWAY" "8.8.8.8"; then
-    info "✓ DNS configured (router + Google backup)"
-else
-    warn "Failed to configure DNS (continuing anyway)"
-fi
+read -p "Press Enter when done..." < /dev/tty
+echo ""
 
 # Verify router connectivity
 info "Testing router gateway connectivity..."
