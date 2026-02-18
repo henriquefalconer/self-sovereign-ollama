@@ -477,11 +477,11 @@ echo $OPENAI_API_BASE   # Should be http://192.168.250.20:11434/v1 (WITH /v1)
 
 **Solutions**:
 - Verify VPN connection is active: Check WireGuard tunnel status (method depends on client)
-- Check you can reach server DMZ IP: `ping 192.168.250.20`
+- Check you can reach server: `ping 192.168.250.20`
 - Verify your VPN public key has been added to router by admin
-- Test if router firewall allows VPN → DMZ port 11434: ask admin to check firewall rules
+- Test if router firewall allows VPN → server port 11434: ask admin to check firewall rules
 - Test if server is responding: ask server admin to verify `./scripts/test.sh` passes
-- Verify server IP in `~/.ai-client/env` matches DMZ configuration (default: 192.168.250.20)
+- Verify server IP in `~/.ai-client/env` matches server configuration (default: 192.168.250.20)
 
 ### Environment variables not set
 

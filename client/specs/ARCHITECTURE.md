@@ -16,7 +16,7 @@
 
 - Guarantee the exact HTTP contract in API_CONTRACT.md
 - Support both OpenAI-compatible API (for Aider) and Anthropic-compatible API (for Claude Code)
-- Be reachable at static DMZ IP (default: `192.168.250.20`)
+- Be reachable at static LAN IP (default: `192.168.250.20`)
 - Accept connections only from authorized VPN clients (WireGuard peers)
 
 ## Client Runtime

@@ -27,7 +27,7 @@
 - OpenWrt-compatible hardware
 - OpenWrt 23.05 LTS or later
 - WireGuard support (kernel module + packages)
-- Minimum 2 network interfaces (WAN + DMZ)
+- Minimum 2 network interfaces (WAN + LAN)
 - Sufficient RAM for firewall rules (typically 128MB+)
 - Public IP address or dynamic DNS
 
@@ -54,5 +54,5 @@ Ollama runs as a user-level LaunchAgent (not root) for security. Sudo may be req
 ### Internet Connectivity
 - Outbound internet from isolated server (for model downloads, OS updates)
   - Trade-off: Allows automatic updates but increases attack surface
-  - Alternative: Fully air-gapped DMZ with manual model loading
+  - Alternative: Fully air-gapped isolated server with manual model loading
 - No inbound internet access except WireGuard VPN

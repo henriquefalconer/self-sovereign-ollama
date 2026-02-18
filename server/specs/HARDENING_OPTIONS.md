@@ -60,11 +60,11 @@ These controls act **before** a request reaches Ollama.
 
 **Implementation**: OpenWrt firewall rules (already part of base v2 architecture)
 ```bash
-# VPN → DMZ port 11434 only
+# VPN → server port 11434 only
 uci add firewall rule
 uci set firewall.@rule[-1].name='Allow-VPN-to-Ollama'
 uci set firewall.@rule[-1].src='vpn'
-uci set firewall.@rule[-1].dest='dmz'
+uci set firewall.@rule[-1].dest='lan'
 uci set firewall.@rule[-1].dest_ip='192.168.250.20'
 uci set firewall.@rule[-1].dest_port='11434'
 uci set firewall.@rule[-1].proto='tcp'
@@ -107,9 +107,9 @@ iptables -A INPUT -m state --state INVALID -j DROP
 **Implementation**: OpenWrt iptables with recent module
 ```bash
 # Limit new connections to 20/minute from single VPN client
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 \
     -m recent --name vpn_connlimit --set
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 \
     -m recent --name vpn_connlimit --update --seconds 60 --hitcount 20 \
     -j DROP
 ```
@@ -140,12 +140,12 @@ These controls regulate **how much** inference can happen.
 **Implementation**: OpenWrt iptables connlimit module
 ```bash
 # Global limit: max 10 concurrent connections to Ollama
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 \
     -m connlimit --connlimit-above 10 --connlimit-mask 0 \
     -j REJECT --reject-with tcp-reset
 
 # Per-client limit: max 3 concurrent connections per VPN client
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 \
     -m connlimit --connlimit-above 3 --connlimit-mask 32 \
     -j REJECT --reject-with tcp-reset
 ```
@@ -174,7 +174,7 @@ iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
 sysctl net.netfilter.nf_conntrack_tcp_timeout_established=3600  # 1 hour
 
 # Or via iptables for specific connections
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 \
     -m state --state ESTABLISHED \
     -m conntrack --ctstate ESTABLISHED --ctexpire 3600 \
     -j ACCEPT
@@ -219,10 +219,10 @@ iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
 **Implementation**: OpenWrt iptables limit module
 ```bash
 # Limit packets to 100/second from single VPN client
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 \
     -m limit --limit 100/sec --limit-burst 200 \
     -j ACCEPT
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 \
     -j DROP
 ```
 
@@ -278,14 +278,14 @@ uci set wireguard.@peer[-1].PersistentKeepalive='25'
 **Implementation**: OpenWrt iptables rules based on source IP
 ```bash
 # Allow only specific VPN client (10.10.10.5) to access Ollama
-iptables -A FORWARD -s 10.10.10.5 -i wg0 -o br-dmz -p tcp --dport 11434 -j ACCEPT
+iptables -A FORWARD -s 10.10.10.5 -i wg0 -o br-lan -p tcp --dport 11434 -j ACCEPT
 
 # Different rate limits for different clients
-iptables -A FORWARD -s 10.10.10.5 -i wg0 -o br-dmz -p tcp --dport 11434 \
+iptables -A FORWARD -s 10.10.10.5 -i wg0 -o br-lan -p tcp --dport 11434 \
     -m limit --limit 50/sec -j ACCEPT  # Lower limit for this client
 
 # Block specific client
-iptables -A FORWARD -s 10.10.10.99 -i wg0 -o br-dmz -p tcp --dport 11434 -j DROP
+iptables -A FORWARD -s 10.10.10.99 -i wg0 -o br-lan -p tcp --dport 11434 -j DROP
 ```
 
 **Provides**:
@@ -348,11 +348,11 @@ These controls provide visibility without restricting access.
 **Implementation**: OpenWrt firewall logging
 ```bash
 # Log accepted connections to Ollama
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 \
     -j LOG --log-prefix "OLLAMA_ACCESS: " --log-level 6
 
 # Then allow
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 -j ACCEPT
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 -j ACCEPT
 ```
 
 **Captures**:
@@ -406,11 +406,11 @@ iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 -j ACCEPT
 opkg update
 opkg install iftop bwm-ng tcpdump
 
-# Monitor VPN → DMZ traffic
+# Monitor VPN → server traffic
 iftop -i wg0
 
 # Capture packets for analysis
-tcpdump -i br-dmz -w /tmp/ollama-traffic.pcap port 11434
+tcpdump -i br-lan -w /tmp/ollama-traffic.pcap port 11434
 ```
 
 **Metrics available**:
@@ -483,18 +483,17 @@ These are architectural changes, not config additions.
 
 **Implementation**: firewall-based server isolation
 - LAN subnet: 192.168.250.0/24
-- LAN subnet: 192.168.250.0/24
 - VPN subnet: 10.10.10.0/24
 - Firewall rules:
-  - VPN → DMZ: port 11434 only
-  - DMZ → LAN: denied
-  - DMZ → Internet: allowed (model downloads)
-  - LAN → DMZ: admin access only (optional)
+  - VPN → server: port 11434 only
+  - server → LAN: denied
+  - server → Internet: allowed (model downloads)
+  - LAN → server: admin access only (optional)
 
 **Provides**:
 - Server isolation from LAN (Ollama can't access personal files on LAN devices)
 - Limited attack surface (only port 11434 exposed to VPN)
-- Containment (compromised DMZ server can't pivot to LAN)
+- Containment (compromised server can't pivot to LAN)
 
 **No additional cost**: Network segmentation is base v2 architecture
 
@@ -649,7 +648,7 @@ ssh root@192.168.250.1
 uci add firewall rule
 uci set firewall.@rule[-1].name='Connection-Limit'
 uci set firewall.@rule[-1].src='vpn'
-uci set firewall.@rule[-1].dest='dmz'
+uci set firewall.@rule[-1].dest='lan'
 uci set firewall.@rule[-1].proto='tcp'
 uci set firewall.@rule[-1].dest_port='11434'
 # ... rule-specific config ...
@@ -662,7 +661,7 @@ uci commit firewall
 **Method 2: Direct iptables (testing, not persistent)**
 ```bash
 # Add rule temporarily
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 -m connlimit --connlimit-above 10 -j DROP
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 -m connlimit --connlimit-above 10 -j DROP
 
 # View current rules
 iptables -L FORWARD -v -n
@@ -678,7 +677,7 @@ iptables -D FORWARD 5
 
 cat >> /etc/firewall.user <<'EOF'
 # Custom Ollama hardening rules
-iptables -A FORWARD -i wg0 -o br-dmz -p tcp --dport 11434 \
+iptables -A FORWARD -i wg0 -o br-lan -p tcp --dport 11434 \
     -m connlimit --connlimit-above 10 -j DROP
 EOF
 
@@ -728,7 +727,7 @@ This document provides:
 > **A catalog of optional controls, not requirements**
 
 Key principles:
-- ✅ Base architecture is secure (two-layer defense: Router/VPN/DMZ/Firewall + Ollama)
+- ✅ Base architecture is secure (two-layer defense: Router/VPN/Firewall/Isolation + Ollama)
 - ✅ Most options are additive (router firewall rules)
 - ✅ Some options require architectural changes (reverse proxy for endpoint filtering)
 - ✅ Prioritize based on actual threats (not theory)

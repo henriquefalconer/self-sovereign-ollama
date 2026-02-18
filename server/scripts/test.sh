@@ -866,12 +866,12 @@ fi
 show_progress "Checking OLLAMA_HOST in plist..."
 if grep -q "OLLAMA_HOST" "$PLIST_PATH"; then
     PLIST_HOST=$(grep -A1 "OLLAMA_HOST" "$PLIST_PATH" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
-    if [[ "$PLIST_HOST" =~ ^192\.168\.100\.[0-9]+$ ]] || [[ "$PLIST_HOST" == "0.0.0.0" ]]; then
-        pass "OLLAMA_HOST=$PLIST_HOST configured in plist (v2 dedicated IP or all-interfaces binding)"
+    if [[ "$PLIST_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ "$PLIST_HOST" != "127.0.0.1" ]]; then
+        pass "OLLAMA_HOST=$PLIST_HOST configured in plist (dedicated LAN IP or all-interfaces binding)"
     elif [[ "$PLIST_HOST" == "127.0.0.1" ]]; then
-        fail "OLLAMA_HOST=127.0.0.1 found in plist (v1 loopback-only binding, should be dedicated IP or 0.0.0.0 for v2)"
+        fail "OLLAMA_HOST=127.0.0.1 found in plist (v1 loopback-only binding, should be dedicated LAN IP or 0.0.0.0 for v2)"
     else
-        fail "OLLAMA_HOST=$PLIST_HOST found in plist (unexpected value, should be dedicated IP or 0.0.0.0)"
+        fail "OLLAMA_HOST=$PLIST_HOST found in plist (unexpected value, should be dedicated LAN IP or 0.0.0.0)"
     fi
 else
     fail "OLLAMA_HOST not found in plist"
@@ -880,16 +880,16 @@ fi
 echo ""
 echo "=== Network Tests ==="
 
-# Test 18: Ollama service binding (verify DMZ or all-interfaces)
+# Test 18: Ollama service binding (verify dedicated LAN IP or all-interfaces)
 show_progress "Checking Ollama service binding..."
 if command -v lsof &> /dev/null; then
     OLLAMA_BINDING=$(lsof -i :11434 -sTCP:LISTEN 2>/dev/null | grep ollama || echo "")
-    if echo "$OLLAMA_BINDING" | grep -qE "192\.168\.100\.[0-9]+:11434"; then
-        pass "Ollama binds to dedicated IP (192.168.250.x:11434) - secure"
-    elif echo "$OLLAMA_BINDING" | grep -q "0.0.0.0:11434"; then
+    if echo "$OLLAMA_BINDING" | grep -q "127.0.0.1:11434"; then
+        fail "Ollama binds to loopback only (127.0.0.1:11434) - v1 configuration, should be dedicated LAN IP or 0.0.0.0 for v2"
+    elif echo "$OLLAMA_BINDING" | grep -qE "\*:11434|0\.0\.0\.0:11434"; then
         pass "Ollama binds to all interfaces (0.0.0.0:11434) - accessible"
-    elif echo "$OLLAMA_BINDING" | grep -q "127.0.0.1:11434"; then
-        fail "Ollama binds to loopback only (127.0.0.1:11434) - v1 configuration, should be dedicated IP or 0.0.0.0 for v2"
+    elif echo "$OLLAMA_BINDING" | grep -qE "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:11434"; then
+        pass "Ollama binds to dedicated LAN IP - secure"
     else
         skip "Could not determine Ollama binding from lsof output"
     fi

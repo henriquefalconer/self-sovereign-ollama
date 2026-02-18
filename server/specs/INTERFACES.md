@@ -9,7 +9,7 @@ VPN Client → WireGuard (Router) → Firewall → Ollama (192.168.250.20:11434)
 ```
 
 - **VPN Clients** connect via WireGuard tunnel to router
-- **Router Firewall** allows VPN → DMZ port 11434 only
+- **Router Firewall** allows VPN → server port 11434 only
 - **Ollama** bound to AI server interface, serves all API endpoints directly
 
 This provides **network perimeter security** - only VPN-authenticated clients can reach the server.
@@ -28,8 +28,8 @@ This provides **network perimeter security** - only VPN-authenticated clients ca
 ### Layer 2: Firewall Forwarding
 
 **Router firewall allows:**
-- VPN → DMZ port 11434 (TCP)
-- All other VPN → DMZ traffic denied
+- VPN → server port 11434 (TCP)
+- All other VPN → server traffic denied
 - VPN → LAN traffic denied
 - VPN → WAN traffic denied
 
@@ -125,7 +125,7 @@ Both served by the same Ollama process with no additional Ollama configuration r
 
 ## Network Configuration Interface
 
-### DMZ Network
+### Isolated LAN Network
 
 **Server static IP:**
 - IP: `192.168.250.20` (default, configurable during install)
@@ -208,13 +208,13 @@ lsof -i :11434
 
 **SSH** (recommended):
 ```bash
-ssh root@192.168.250.1  # From DMZ server
+ssh root@192.168.250.1  # From server
 ssh root@192.168.250.1     # From LAN
 ```
 
 **LuCI Web Interface**:
 ```
-http://192.168.250.1  # From DMZ server
+http://192.168.250.1  # From server
 http://192.168.250.1    # From LAN
 ```
 
@@ -279,10 +279,10 @@ See `../client/specs/` for complete client setup instructions.
 - Enforcement: Public key cryptography
 - Management: Router WireGuard configuration
 
-### Layer 3: DMZ Isolation (What server can access)
+### Layer 3: Firewall Isolation (What server can access)
 
 - Controls: Server's network reachability
-- Enforcement: Firewall rules (DMZ → LAN denied)
+- Enforcement: Firewall rules (server → LAN denied)
 - Management: Router firewall zones
 
 See `SECURITY.md` for complete security model.

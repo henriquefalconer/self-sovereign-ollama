@@ -20,32 +20,32 @@ See `NETWORK_DOCUMENTATION.md` for complete router configuration.
 
 **Firewall:**
 - Deny all inbound WAN traffic except WireGuard UDP
-- Allow VPN → DMZ port 11434 only
+- Allow VPN → server port 11434 only
 - Deny VPN → LAN completely
-- Deny DMZ → LAN completely
-- Allow DMZ → WAN (outbound internet)
-- Optionally allow LAN → DMZ (admin access)
+- Deny server → LAN completely
+- Allow server → WAN (outbound internet)
+- Optionally allow LAN → server (admin access)
 
-**DMZ Network:**
-- Dedicated subnet for AI server (default: 192.168.250.0/24)
+**Isolated LAN:**
+- LAN subnet for AI server (default: 192.168.250.0/24)
 - Router provides DHCP or static IP assignment
 - Router provides DNS resolution (optional)
-- Router provides internet gateway for DMZ
+- Router provides internet gateway for isolated server
 
 ## Security Behavior
 
 **Access control:**
-- Only WireGuard-authenticated peers can reach DMZ
+- Only WireGuard-authenticated peers can reach server
 - Per-peer revocation via public key removal
 - No shared secrets (no password authentication)
 
 **Network isolation:**
-- DMZ server cannot reach LAN resources
+- Isolated server cannot reach LAN resources
 - VPN clients cannot reach LAN resources
 - LAN devices cannot initiate connections to AI server (unless explicitly allowed)
 
 **Blast radius containment:**
-- If DMZ server compromised, attacker cannot pivot to LAN
+- If server compromised, attacker cannot pivot to LAN
 - Attacker has outbound internet (trade-off for functionality)
 
 ------------------------------------------------------------
@@ -279,9 +279,9 @@ networksetup -getinfo "Ethernet"
 ### Router Connectivity
 
 **Requirements**:
-- Router must be reachable at DMZ gateway IP (192.168.250.1)
+- Router must be reachable at gateway IP (192.168.250.1)
 - Router must provide internet access for model downloads
-- Router must have DMZ firewall rules configured
+- Router must have server isolation firewall rules configured
 
 **Test connectivity**:
 ```bash

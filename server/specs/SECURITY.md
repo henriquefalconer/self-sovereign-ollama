@@ -395,7 +395,7 @@ Client → Tailscale (100.x.x.x) → HAProxy → Ollama (127.0.0.1:11434)
 ### v2 Architecture (WireGuard + Firewall Isolation) - Current
 
 ```
-Client → WireGuard VPN → Router Firewall → Ollama (DMZ)
+Client → WireGuard VPN → Router Firewall → Ollama (isolated LAN)
 ```
 
 **Characteristics:**
@@ -461,7 +461,7 @@ Client → WireGuard VPN → Router Firewall → Ollama (DMZ)
 - More operational overhead
 
 **Recommendation for self-sovereign networks:**
-- **High-security environments**: Air-gap DMZ, manual model loading
+- **High-security environments**: Air-gap isolated server, manual model loading
 - **Convenience-first environments**: Allow outbound, accept risk
 
 ---
@@ -483,7 +483,7 @@ This architecture provides a **foundation** for future security enhancements wit
 - Rate limiting per client
 - Request logging with attribution
 
-**DMZ-layer:**
+**Isolated server layer:**
 - Intrusion detection system (Snort, Suricata via OpenWrt)
 - Web application firewall (ModSecurity)
 - Outbound firewall logs and alerts
@@ -497,7 +497,7 @@ See `HARDENING_OPTIONS.md` for complete design space (not requirements, just opt
 For production deployments:
 
 **Server validation:**
-1. **Verify dedicated IP binding** - Run `lsof -i :11434` on server (should show DMZ IP)
+1. **Verify dedicated IP binding** - Run `lsof -i :11434` on server (should show dedicated LAN IP)
 2. **Test LAN isolation** - Attempt to ping LAN devices from server (should fail)
 3. **Test outbound** - Attempt to reach internet from server (should succeed or fail based on configuration)
 4. **Monitor logs** - Check `/tmp/ollama.*.log` for unexpected activity
@@ -539,7 +539,7 @@ Security properties:
 - ✅ Single ingress point (router)
 - ✅ No third-party VPN dependency (self-sovereign)
 - ✅ Device revocation (remove public key)
-- ✅ Blast radius containment (DMZ → LAN denied)
+- ✅ Blast radius containment (server → LAN denied)
 
 Trade-offs:
 - ⚠️ No application-layer endpoint filtering (all Ollama endpoints accessible to VPN clients)

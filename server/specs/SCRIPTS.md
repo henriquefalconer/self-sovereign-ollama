@@ -29,7 +29,7 @@
 - If user answers No, exits with instructions
 - If user answers Yes, continues
 
-### DMZ Network Configuration
+### Isolated LAN Network Configuration
 - Prompts for LAN subnet (default: `192.168.250.0/24`)
 - Prompts for server static IP (default: `192.168.250.20`)
 - Validates IP format and subnet membership
@@ -60,7 +60,7 @@
   - Logs to `/tmp/ollama.stdout.log` and `/tmp/ollama.stderr.log`
 - Loads the plist via `launchctl bootstrap` (modern API)
 - Verifies Ollama is listening on port 11434 (retry loop with timeout)
-- Verifies binding to correct interface: `lsof -i :11434` (should show DMZ IP)
+- Verifies binding to correct interface: `lsof -i :11434` (should show dedicated LAN IP)
 - Verifies process is running as user (not root)
 - Runs self-test: `curl -sf http://192.168.250.20:11434/v1/models`
 
@@ -139,7 +139,7 @@
   Note: Router WireGuard configuration NOT removed.
   To fully uninstall:
   1. Remove this server's peer from router WireGuard config
-  2. Remove DMZ firewall rules (optional)
+  2. Remove server isolation firewall rules (optional)
   3. See NETWORK_DOCUMENTATION.md for instructions
   ```
 - **Graceful degradation** - Continue with remaining cleanup even if some steps fail
@@ -180,7 +180,7 @@ Comprehensive test script that validates all server functionality. Designed to r
 ### Network Configuration Tests
 - Verify static IP is configured correctly
 - Check interface binding: `networksetup -getinfo "Ethernet"`
-- Verify IP matches configured DMZ IP (e.g., 192.168.250.20)
+- Verify IP matches configured server LAN IP (e.g., 192.168.250.20)
 - Test router connectivity: `ping -c 3 192.168.250.1`
 - Test DNS resolution (if configured)
 - Test outbound internet: `ping -c 3 8.8.8.8`
@@ -190,7 +190,7 @@ Comprehensive test script that validates all server functionality. Designed to r
 - Verify LaunchAgent is loaded (`launchctl list | grep com.ollama`)
 - Verify Ollama process is running as user (not root)
 - Verify Ollama is listening on port 11434
-- Verify binding to correct interface: `lsof -i :11434` (should show DMZ IP or 0.0.0.0)
+- Verify binding to correct interface: `lsof -i :11434` (should show dedicated LAN IP or 0.0.0.0)
 - Verify service responds to basic HTTP requests
 
 ### API Endpoint Tests (OpenAI-Compatible)
@@ -243,17 +243,17 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
 - Verify Ollama process owner is current user (not root)
 - Verify log files exist and are readable (`/tmp/ollama.stdout.log`, `/tmp/ollama.stderr.log`)
 - Verify plist file exists at `~/Library/LaunchAgents/com.ollama.plist`
-- Verify `OLLAMA_HOST` is set correctly in plist (DMZ IP or 0.0.0.0)
+- Verify `OLLAMA_HOST` is set correctly in plist (dedicated LAN IP or 0.0.0.0)
 - Verify no unexpected network services running: `lsof -i` (should only show Ollama on 11434)
 
 ### Network Isolation Tests
 - Verify Ollama service binds to correct interface
   - Use `lsof -i :11434` to check binding
-  - Should show DMZ IP (192.168.250.20) or 0.0.0.0
-- Test local access via DMZ IP (should succeed)
+  - Should show dedicated LAN IP (192.168.250.20) or 0.0.0.0
+- Test local access via dedicated LAN IP (should succeed)
 - Test router connectivity (should succeed)
 - Test LAN isolation: attempt to reach LAN device (should fail)
-  - Note: This validates DMZ → LAN firewall rule on router
+  - Note: This validates server → LAN firewall rule on router
   - If succeeds, indicates router misconfiguration
 - **Note**: Testing from VPN client requires client-side test (cannot be automated from server)
 
@@ -262,7 +262,7 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
 **These tests require VPN client or router SSH access and cannot be automated from server:**
 
 **From VPN client (after VPN connected):**
-- [ ] Can reach DMZ server: `ping 192.168.250.20` (should succeed)
+- [ ] Can reach server: `ping 192.168.250.20` (should succeed)
 - [ ] Can reach port 11434: `nc -zv 192.168.250.20 11434` (should succeed)
 - [ ] Cannot reach LAN: `ping 192.168.250.1` (should timeout/fail)
 - [ ] Cannot reach internet: `ping 8.8.8.8` (should timeout/fail)
@@ -270,9 +270,9 @@ These tests validate the Anthropic Messages API endpoint (`/v1/messages`) introd
 
 **From router (via SSH):**
 - [ ] WireGuard running: `wg show wg0` (should show peers)
-- [ ] Firewall rules present: `iptables -L -v -n` (should show VPN → DMZ rules)
-- [ ] Can reach DMZ server: `ping 192.168.250.20` (should succeed)
-- [ ] DMZ server isolated from LAN: check firewall rules
+- [ ] Firewall rules present: `iptables -L -v -n` (should show VPN → server rules)
+- [ ] Can reach server: `ping 192.168.250.20` (should succeed)
+- [ ] Server isolated from LAN: check firewall rules
 
 **From internet (before VPN):**
 - [ ] Port 11434 not exposed: `nmap -p 11434 <public-ip>` (should be closed/filtered)

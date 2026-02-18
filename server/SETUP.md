@@ -21,7 +21,7 @@ Required router configuration:
 - OpenWrt 23.05 LTS or later installed
 - WireGuard VPN server configured on router
 - isolated LAN created (192.168.250.0/24)
-- Firewall rules: VPN → DMZ port 11434 only
+- Firewall rules: VPN → server port 11434 only
 - Static DHCP reservation for server (192.168.250.20)
 
 ### 2. Configure Server Network
@@ -49,7 +49,7 @@ Configure manually in System Settings → Network → Select interface → Detai
 brew install ollama
 ```
 
-### 4. Configure Ollama with DMZ Binding
+### 4. Configure Ollama with Dedicated LAN IP Binding
 
 Create user-level launch agent with **dedicated LAN IP binding** (192.168.250.20):
 
@@ -89,7 +89,7 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ollama.plist
 
 **Important:** `OLLAMA_HOST=192.168.250.20` binds Ollama to the dedicated LAN IP. Router firewall controls access (VPN clients → port 11434 only).
 
-**Alternative binding:** Use `OLLAMA_HOST=0.0.0.0` to listen on all interfaces (DMZ + localhost). Router firewall still controls external access.
+**Alternative binding:** Use `OLLAMA_HOST=0.0.0.0` to listen on all interfaces. Router firewall still controls external access.
 
 ### 5. Start Ollama Service
 
@@ -138,7 +138,7 @@ See [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) for complete VPN peer m
 curl -sf http://192.168.250.20:11434/v1/models
 echo "✓ Ollama accessible on isolated LAN interface"
 
-# Verify Ollama is bound to DMZ IP or all interfaces
+# Verify Ollama is bound to dedicated LAN IP or all interfaces
 lsof -i :11434 | grep LISTEN
 # Expected output: ollama should show 192.168.250.20:11434 (or 0.0.0.0:11434)
 ```
@@ -360,7 +360,7 @@ This step is optional but recommended if you want immediate response times after
 **Solutions**:
 - Verify VPN connection:
   - Client should have active WireGuard tunnel
-  - Check client can ping DMZ server: `ping 192.168.250.20`
+  - Check client can ping server: `ping 192.168.250.20`
 - Verify Ollama is running and listening on isolated LAN interface:
   - `launchctl list | grep com.ollama`
   - `lsof -i :11434` should show Ollama bound to 192.168.250.20 (or 0.0.0.0)
@@ -371,7 +371,7 @@ This step is optional but recommended if you want immediate response times after
   - dedicated LAN IP: `curl http://192.168.250.20:11434/v1/models`
 - If server test works but client test doesn't:
   - Router firewall may be blocking: Check [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) firewall rules
-  - Verify VPN → DMZ rule allows port 11434: `ssh root@192.168.250.1 "iptables -L FORWARD -v -n | grep 11434"`
+  - Verify VPN → server rule allows port 11434: `ssh root@192.168.250.1 "iptables -L FORWARD -v -n | grep 11434"`
   - Check client's VPN peer is configured on router: `ssh root@192.168.250.1 "wg show wg0"`
 - Verify no macOS firewall blocking port 11434 (System Settings → Network → Firewall)
 
@@ -399,6 +399,6 @@ The test suite will identify specific issues with:
 - Static IP configuration
 - OpenAI API endpoints
 - Anthropic API endpoints (if Ollama 0.5.0+)
-- Network isolation (DMZ vs LAN)
+- Network isolation (server vs LAN)
 
 **Note**: Router integration tests (firewall rules, VPN connectivity) are manual - see [NETWORK_DOCUMENTATION.md](NETWORK_DOCUMENTATION.md) verification section.

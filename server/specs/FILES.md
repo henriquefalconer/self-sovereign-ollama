@@ -59,7 +59,7 @@ networksetup -getinfo "Ethernet"
 **Key components:**
 - WireGuard VPN configuration on router
 - isolated LAN configuration
-- Firewall rules (VPN → DMZ, DMZ → WAN, etc.)
+- Firewall rules (VPN → server port 11434, server → WAN, etc.)
 - Static DHCP lease or router-side static IP assignment
 
 ### Log Files
@@ -113,7 +113,7 @@ networksetup -getinfo "Ethernet"
 ┌────────────────────────────────────────────┐
 │ Router (external to repo)                  │
 │ ├── WireGuard VPN config                   │
-│ ├── DMZ firewall rules                     │
+│ ├── Server isolation firewall rules                     │
 │ └── See NETWORK_DOCUMENTATION.md                    │
 └────────────────────────────────────────────┘
 ```
